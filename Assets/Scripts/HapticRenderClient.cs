@@ -116,6 +116,7 @@ public class HapticRenderClient : MonoBehaviour
             }
             case (byte)Headers.FORCE_FEEDBACK:
             {
+                // Checks for force feedback response
                 byte feedbackResponse = client.readByte();
                 if (feedbackResponse != (byte)Headers.ACK)
                 {
@@ -126,6 +127,7 @@ public class HapticRenderClient : MonoBehaviour
             }
             case (byte)Headers.PLANE_FEEDBACK:
             {
+                // Checks for plane feedback response
                 byte feedbackResponse = client.readByte();
                 if (feedbackResponse != (byte)Headers.ACK)
                 {
@@ -142,6 +144,7 @@ public class HapticRenderClient : MonoBehaviour
         lock (commLock)
         {
             client.sendHeader((byte)Headers.PLANE_FEEDBACK);
+            // Send the contact point and plane normal to the server
             client.sendVector3(candidate.getContactPoint());
             client.sendVector3(candidate.getPlaneNormal());
             client.sendPacket();

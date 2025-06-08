@@ -50,10 +50,10 @@ public class HapticShadow : MonoBehaviour
             bool detected = other.Raycast(new Ray(self.bounds.center, relVel.normalized), out selfToOther, Mathf.Infinity);
 
             if (!detected)
-                {
-                    result = null;
-                    return false;
-                }
+            {
+                result = null;
+                return false;
+            }
 
             // Reverse raycast from contact point against self object
             RaycastHit contactToSelf;
@@ -186,6 +186,7 @@ public class HapticShadow : MonoBehaviour
 
     void LateUpdate()
     {
+        // Updates haptic node with current collision candidate after all collisions are evaluated
         node.UpdateCollisionCandidate(currCandidate);
         currCandidate = new CollisionCandidate();
     }
@@ -207,7 +208,12 @@ public class HapticShadow : MonoBehaviour
     }
 
     void evaluateTrigger(Collider other) {
-        //Gets collision candidate
+        //Gets collision candidate from raycast
+        if (other.isTrigger)
+        {
+            // Ignores triggers
+            return;
+        }
         CollisionCandidate candidate;
         if (CollisionCandidate.fromRaycast(node.GetHaptics().reactionSpeed, shadowCollider, other, out candidate))
         {

@@ -207,7 +207,7 @@ public class HapticNode : MonoBehaviour
 
     private void UpdateKinematics()
     {
-        // Get the mirror object's velocity and angular velocity
+        // Get the mirror object's velocity and acceleration
         Vector3 mirrorPosCopy = GetMirrorPos();
         Vector3 prevMirrorPos = mirrorObject.transform.position;
         Vector3 currMirrorVel = (mirrorPosCopy - prevMirrorPos) / Time.fixedDeltaTime;
@@ -295,6 +295,7 @@ public class HapticNode : MonoBehaviour
 
     public void UpdateCollisionCandidate(HapticShadow.CollisionCandidate candidate)
     {
+        // Sends collision candidate to haptic client
         haptics.SendCollisionCandidate(candidate);
         currCandidate = candidate;
     }

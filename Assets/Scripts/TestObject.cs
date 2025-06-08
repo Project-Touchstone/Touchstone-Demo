@@ -17,7 +17,7 @@ public class TestObject : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Space))
         {
-            rb.AddForce(new Vector3(0f, -0.05f, 0f));
+            rb.useGravity = true;
         }
     }
 }
