@@ -148,7 +148,7 @@ public class HapticNode : MonoBehaviour
         {
             collisionVisual.SetActive(true);
             // Positions and orients to match collision plane
-            collisionVisual.transform.position = currCandidate.getContactPoint();
+            collisionVisual.transform.position = shadowObject.transform.position + currCandidate.getContactPoint();
             collisionVisual.transform.rotation = Quaternion.LookRotation(Vector3.forward, currCandidate.getPlaneNormal());
         }
         else
