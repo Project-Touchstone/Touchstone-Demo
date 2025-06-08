@@ -38,65 +38,68 @@ public class HapticShadow : MonoBehaviour
             }
             Vector3 relVel = selfVel - otherVel;
 
+            if (relVel.normalized.magnitude == 0)
+            {
+                // No relative velocity, no collision
+                result = null;
+                return false;
+            }
+
             // Raycasts from self object center against other object
             RaycastHit selfToOther;
-            bool detected;
-            detected = other.Raycast(new Ray(self.bounds.center, relVel.normalized), out selfToOther, Mathf.Infinity);
+            bool detected = other.Raycast(new Ray(self.bounds.center, relVel.normalized), out selfToOther, Mathf.Infinity);
 
-            if (detected)
-            {
-                // Reverse raycast from contact point against self object
-                RaycastHit contactToSelf;
-                detected = self.Raycast(new Ray(selfToOther.point, -relVel.normalized), out contactToSelf, Mathf.Infinity);
-                if (detected)
-                {
-                    // Gets time-based proximity
-                    float distance = contactToSelf.distance;
-                    float proximity = distance / relVel.magnitude * reactionSpeed;
-                    // Projects along velocity direction
-                    Vector3 contactPoint = relVel.normalized * proximity;
-
-                    // Finds approximate collision normal
-                    Vector3 collisionNormal = (selfToOther.normal + contactToSelf.normal).normalized;
-
-                    // Gets mass
-                    float selfMass = self.attachedRigidbody.mass;
-
-                    Vector3 momentumChange;
-                    if (other.attachedRigidbody == null)
-                    {
-                        // Treats other object as immovable
-                        momentumChange = 2 * selfMass * Vector3.Dot(relVel, collisionNormal) * collisionNormal;
-                    }
-                    else
-                    {
-                        // Otherwise does elastic collision
-                        float otherMass = other.attachedRigidbody.mass;
-
-                        // Finds initial velocities relative to collision plane
-                        float initSelfVel = Vector3.Dot(selfVel, collisionNormal);
-                        float initOtherVel = Vector3.Dot(otherVel, collisionNormal);
-
-                        // Computes momentum transfer after elastic collision
-                        float finalSelfVel = (2 * otherMass * initOtherVel + (selfMass - otherMass) * initSelfVel) / (selfMass + otherMass);
-                        momentumChange = selfMass * (finalSelfVel - initSelfVel) * collisionNormal;
-                    }
-
-                    // Creates collision candidate
-                    result = new CollisionCandidate(contactPoint, momentumChange);
-                    return true;
-                }
-                else
+            if (!detected)
                 {
                     result = null;
                     return false;
                 }
-            }
-            else
+
+            // Reverse raycast from contact point against self object
+            RaycastHit contactToSelf;
+            detected = self.Raycast(new Ray(selfToOther.point, -relVel.normalized), out contactToSelf, Mathf.Infinity);
+
+            if (!detected)
             {
                 result = null;
                 return false;
             }
+
+            // Gets time-based proximity
+            float distance = contactToSelf.distance;
+            float proximity = distance / relVel.magnitude * reactionSpeed;
+            // Projects along velocity direction
+            Vector3 contactPoint = relVel.normalized * proximity;
+
+            // Finds approximate collision normal
+            Vector3 collisionNormal = (selfToOther.normal - contactToSelf.normal).normalized;
+
+            // Gets mass
+            float selfMass = self.attachedRigidbody.mass;
+
+            Vector3 momentumChange;
+            if (other.attachedRigidbody == null)
+            {
+                // Treats other object as immovable
+                momentumChange = 2 * selfMass * Vector3.Dot(relVel, collisionNormal) * collisionNormal;
+            }
+            else
+            {
+                // Otherwise does elastic collision
+                float otherMass = other.attachedRigidbody.mass;
+
+                // Finds initial velocities relative to collision plane
+                float initSelfVel = Vector3.Dot(selfVel, collisionNormal);
+                float initOtherVel = Vector3.Dot(otherVel, collisionNormal);
+
+                // Computes momentum transfer after elastic collision
+                float finalSelfVel = (2 * otherMass * initOtherVel + (selfMass - otherMass) * initSelfVel) / (selfMass + otherMass);
+                momentumChange = selfMass * (finalSelfVel - initSelfVel) * collisionNormal;
+            }
+
+            // Creates collision candidate
+            result = new CollisionCandidate(contactPoint, momentumChange);
+            return true;
         }
 
         public float getProximity()
@@ -119,26 +122,41 @@ public class HapticShadow : MonoBehaviour
             return momentumChange;
         }
 
+        public bool isValid()
+        {
+            return (momentumChange.magnitude > 0);
+        }
+
         public int compareTo(CollisionCandidate other)
         {
-            if (other.getMomentumChange().magnitude == 0)
+            if (!isValid())
             {
+                // If self is invalid, other is more urgent
                 return -1;
             }
+            else if (!other.isValid())
+            {
+                // If other is invalid, self is more urgent
+                return 1;
+            }
 
+            // Compares proximity
             float prox = getProximity();
             float otherProx = other.getProximity();
 
             if (otherProx >= 2 * prox)
             {
-                return -1;
+                // If other is at least twice as far, self is more urgent
+                return 1;
             }
             else if (prox >= 2 * otherProx)
             {
-                return 1;
+                // If self is at least twice as far, other is more urgent
+                return -1;
             }
             else
             {
+                // Otherwise they are equally urgent
                 return 0;
             }
         }
@@ -166,9 +184,9 @@ public class HapticShadow : MonoBehaviour
         this.node = node;
     }
 
-    void LastUpdate()
+    void LateUpdate()
     {
-        node.GetHaptics().UpdateCollisionCandidate(currCandidate);
+        node.UpdateCollisionCandidate(currCandidate);
         currCandidate = new CollisionCandidate();
     }
 
@@ -205,7 +223,7 @@ public class HapticShadow : MonoBehaviour
                 // Combines with current candidate
                 currCandidate.combineWith(candidate);
             }
-            //Otherwise keeps more urgent curren candidate
+            //Otherwise keeps more urgent current candidate
         }
     }
 }

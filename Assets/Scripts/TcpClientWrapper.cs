@@ -203,14 +203,17 @@ public class TcpClientWrapper
 
     public void sendPacket()
     {
-        try
+        if (stream != null)
         {
-            stream.Write(sendBuffer.ToArray(), 0, sendBuffer.Count);
-            sendBuffer.Clear();
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError($"Failed to send packet: {ex.Message}");
+            try
+            {
+                stream.Write(sendBuffer.ToArray(), 0, sendBuffer.Count);
+                sendBuffer.Clear();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Failed to send packet: {ex.Message}");
+            }
         }
     }
 

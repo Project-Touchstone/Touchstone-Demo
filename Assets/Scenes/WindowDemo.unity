@@ -164,7 +164,7 @@ GameObject:
   - component: {fileID: 41799650}
   - component: {fileID: 41799653}
   - component: {fileID: 41799652}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: Sphere
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -252,7 +252,7 @@ GameObject:
   - component: {fileID: 84159658}
   - component: {fileID: 84159657}
   - component: {fileID: 84159656}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: HapticShadow
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -315,6 +315,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   node: {fileID: 0}
+  shadowCollider: {fileID: 0}
 --- !u!135 &84159657
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -1028,7 +1029,7 @@ GameObject:
   - component: {fileID: 1128854416}
   - component: {fileID: 1128854419}
   - component: {fileID: 1128854418}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: Cylinder
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1261,7 +1262,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1198278906}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: Finger
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1441,6 +1442,7 @@ MonoBehaviour:
   minForce: 0.01
   feedback: 0
   inertia: 1
+  reactionSpeed: 0.01
   visualization: 1
   forceVisualScale: 100
 --- !u!4 &1716128711

@@ -47,6 +47,9 @@ public class HapticNode : MonoBehaviour
     // Force to emulate with mirror object
     private Vector3 forceOnMirror = Vector3.zero;
 
+    // Current collision candidate
+    private HapticShadow.CollisionCandidate currCandidate = new HapticShadow.CollisionCandidate();
+
     // Maximum stiffness and damping
     private float maxStiffness;
     private float maxDamping;
@@ -67,6 +70,10 @@ public class HapticNode : MonoBehaviour
         // Gets maximum stiffness and damping values (would bring object to rest in one frame)
         maxStiffness = shadowRb.mass / Mathf.Pow(Time.fixedDeltaTime, 2);
         maxDamping = shadowRb.mass / Time.fixedDeltaTime;
+
+        // Visuals start off
+        forceVisual.SetActive(false);
+        collisionVisual.SetActive(false);
     }
 
     public void SetHaptics(HapticRenderClient haptics)
@@ -108,7 +115,7 @@ public class HapticNode : MonoBehaviour
         {
             SetForceOnMirror(force);
         }
-        Debug.Log($"Force on mirror: {force.magnitude}");
+        //Debug.Log($"Force on mirror: {force.magnitude}");
 
         // If visualization is on and a force is present
         if (haptics.visualization && force.magnitude > 0)
@@ -121,6 +128,19 @@ public class HapticNode : MonoBehaviour
         else
         {
             forceVisual.SetActive(false);
+        }
+
+        // If visualization is on and a collision candidate is active
+        if (haptics.visualization && currCandidate.isValid())
+        {
+            collisionVisual.SetActive(true);
+            // Positions and orients to match collision plane
+            collisionVisual.transform.position = currCandidate.getContactPoint();
+            collisionVisual.transform.rotation = Quaternion.LookRotation(Vector3.forward, currCandidate.getPlaneNormal());
+        }
+        else
+        {
+            collisionVisual.SetActive(false);
         }
 
         // Updates previous shadow velocity
@@ -271,6 +291,12 @@ public class HapticNode : MonoBehaviour
         Vector3 predictedForce = -(maxStiffness * haptics.stiffness * (predShadowPos - mirrorPosCopy) + maxDamping * haptics.damping * predShadowVel);
 
         return predictedForce;
+    }
+
+    public void UpdateCollisionCandidate(HapticShadow.CollisionCandidate candidate)
+    {
+        haptics.SendCollisionCandidate(candidate);
+        currCandidate = candidate;
     }
 
     private float MomentOfInertiaAlongAxis(Rigidbody rb, Vector3 axis)

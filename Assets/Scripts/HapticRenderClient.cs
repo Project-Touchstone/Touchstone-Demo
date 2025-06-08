@@ -137,7 +137,7 @@ public class HapticRenderClient : MonoBehaviour
         }
     }
 
-    public void UpdateCollisionCandidate(HapticShadow.CollisionCandidate candidate)
+    public void SendCollisionCandidate(HapticShadow.CollisionCandidate candidate)
     {
         lock (commLock)
         {
