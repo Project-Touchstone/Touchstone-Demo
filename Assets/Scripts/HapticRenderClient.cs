@@ -12,8 +12,17 @@ public class HapticRenderClient : MonoBehaviour
     [SerializeField] private string serverAddress = "127.0.0.1"; // Default to localhost
     [SerializeField] private int serverPort = 8080; // Default port
 
-    // Game object to adjust position and orientation of
+    // Game object that controls haptic interaction
     public GameObject nodeObject;
+
+    // Whether force feedback is sent to server
+    public bool forceFeedback = true;
+
+    // Whether plane feedback is sent to server
+    public bool planeFeedback = true;
+
+    // Whether inertia is enabled
+    public bool inertia = false;
 
     // Stiffness and damping coefficients
     public float stiffness = 1f;
@@ -21,12 +30,6 @@ public class HapticRenderClient : MonoBehaviour
 
     //Minimum force
     public float minForce = 0.01f;
-
-    // Whether feedback is sent to server
-    public bool feedback = false;
-
-    // Whether inertia is enabled
-    public bool inertia = false;
 
     // Reaction speed
     public float reactionSpeed = 0.01f;
@@ -36,6 +39,12 @@ public class HapticRenderClient : MonoBehaviour
 
     // Force visualization scale factor
     public float forceVisualScale = 100;
+
+    // Debug mode allows keyboard based movement of haptic node
+    public bool debugMode = false;
+
+    // Movement speed in debug mode
+    public float debugMovementSpeed = 0.1f;
 
     private TcpClientWrapper client;
 
@@ -79,15 +88,21 @@ public class HapticRenderClient : MonoBehaviour
 
     private void PollServer()
     {
-        lock (commLock)
+        if (!debugMode)
         {
-            // Send feedback to the server
-            client.sendHeader((byte)Headers.FORCE_FEEDBACK);
-            // Send the coverted force vector to the server
-            client.sendVector3(node.GetForceOnMirror());
-            // Send a request to the server for node data
-            client.sendByte((byte)Headers.NODE_DATA);
-            client.sendPacket();
+            lock (commLock)
+            {
+                // Send feedback to the server
+                if (forceFeedback)
+                {
+                    client.sendHeader((byte)Headers.FORCE_FEEDBACK);
+                    // Send the coverted force vector to the server
+                    client.sendVector3(unityToHardwareForce(node.GetForceOnMirror()));
+                }
+                // Send a request to the server for node data
+                client.sendByte((byte)Headers.NODE_DATA);
+                client.sendPacket();
+            }
         }
     }
 
@@ -141,13 +156,16 @@ public class HapticRenderClient : MonoBehaviour
 
     public void SendCollisionCandidate(HapticShadow.CollisionCandidate candidate)
     {
-        lock (commLock)
+        if (!debugMode && planeFeedback)
         {
-            client.sendHeader((byte)Headers.PLANE_FEEDBACK);
-            // Send the contact point and plane normal to the server
-            client.sendVector3(candidate.getContactPoint());
-            client.sendVector3(candidate.getPlaneNormal());
-            client.sendPacket();
+            lock (commLock)
+            {
+                client.sendHeader((byte)Headers.PLANE_FEEDBACK);
+                // Send the contact point and plane normal to the server
+                client.sendVector3(unityToHardwarePos(candidate.getContactPoint()));
+                client.sendVector3(unityToHardwareForce(candidate.getPlaneNormal()));
+                client.sendPacket();
+            }
         }
     }
 

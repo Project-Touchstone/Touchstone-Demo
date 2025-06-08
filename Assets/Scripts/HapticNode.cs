@@ -111,12 +111,22 @@ public class HapticNode : MonoBehaviour
         {
             force = Vector3.zero;
         }
-        if (haptics.feedback)
-        {
-            SetForceOnMirror(force);
-        }
+
+        SetForceOnMirror(force);
         //Debug.Log($"Force on mirror: {force.magnitude}");
 
+        // Updates force visualization
+        UpdateForceVisual(force);
+
+        // Updates collision visualization
+        UpdateCollisionVisual();
+
+        // Updates previous shadow velocity
+        prevShadowVel = shadowRb.linearVelocity;
+    }
+
+    private void UpdateForceVisual(Vector3 force)
+    {
         // If visualization is on and a force is present
         if (haptics.visualization && force.magnitude > 0)
         {
@@ -129,7 +139,10 @@ public class HapticNode : MonoBehaviour
         {
             forceVisual.SetActive(false);
         }
+    }
 
+    private void UpdateCollisionVisual()
+    {
         // If visualization is on and a collision candidate is active
         if (haptics.visualization && currCandidate.isValid())
         {
@@ -142,19 +155,40 @@ public class HapticNode : MonoBehaviour
         {
             collisionVisual.SetActive(false);
         }
-
-        // Updates previous shadow velocity
-        prevShadowVel = shadowRb.linearVelocity;
     }
 
     // Update is called once per frame
     void Update()
     {
-        //Moves mirror up slightly if space key is pressed
-        /*if (Input.GetKeyDown(KeyCode.Space))
+        // Updates player movement
+        if (haptics.debugMode)
         {
-            mirrorObject.transform.position += new Vector3(0f, 0.1f, 0f);
-        }*/
+            // Moves mirror object with arrow keys
+            if (Input.GetKey(KeyCode.UpArrow))
+            {
+                mirrorPos += Vector3.up * Time.deltaTime * haptics.debugMovementSpeed;
+            }
+            if (Input.GetKey(KeyCode.DownArrow))
+            {
+                mirrorPos += Vector3.down * Time.deltaTime * haptics.debugMovementSpeed;
+            }
+            if (Input.GetKey(KeyCode.LeftArrow))
+            {
+                mirrorPos += Vector3.left * Time.deltaTime * haptics.debugMovementSpeed;
+            }
+            if (Input.GetKey(KeyCode.RightArrow))
+            {
+                mirrorPos += Vector3.right * Time.deltaTime * haptics.debugMovementSpeed;
+            }
+            if (Input.GetKey(KeyCode.W))
+            {
+                mirrorPos += Vector3.forward * Time.deltaTime * haptics.debugMovementSpeed;
+            }
+            if (Input.GetKey(KeyCode.S))
+            {
+                mirrorPos += Vector3.back * Time.deltaTime * haptics.debugMovementSpeed;
+            }
+        }
     }
 
     private void SetForceOnMirror(Vector3 force)
@@ -295,8 +329,13 @@ public class HapticNode : MonoBehaviour
 
     public void UpdateCollisionCandidate(HapticShadow.CollisionCandidate candidate)
     {
-        // Sends collision candidate to haptic client
-        haptics.SendCollisionCandidate(candidate);
+        // Sends collision candidate to haptic client if it is valid
+        if (candidate.isValid())
+        {
+            haptics.SendCollisionCandidate(candidate);
+        }
+
+        // Updates current collision candidate
         currCandidate = candidate;
     }
 
