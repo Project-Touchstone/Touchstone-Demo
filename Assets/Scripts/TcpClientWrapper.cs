@@ -8,44 +8,48 @@ using UnityEngine;
 
 public class TcpClientWrapper
 {
+    // TcpClient for managing the connection
     private TcpClient client;
+    // NetworkStream for sending/receiving data
     private NetworkStream stream;
+    // Thread for receiving data asynchronously
     private Thread clientReceiveThread;
 
-    //Endianness types
+    // Endianness types for byte order
     public enum Endianness
     {
         LittleEndian,
         BigEndian
     }
 
-    // Send mode types
+    // Send mode types for controlling when data is sent
     public enum SendMode
     {
         IMMEDIATE,
         PACKET
     }
 
-    // Endianness and send mode
+    // Current endianness (default: BigEndian)
     Endianness endianness = Endianness.BigEndian;
+    // Current send mode (default: PACKET)
     SendMode sendMode = SendMode.PACKET;
 
-    // Send buffer
+    // Buffer for outgoing data
     List<byte> sendBuffer = new List<byte>();
 
-    // Queue for request headers
+    // Queue for request headers to track requests
     Queue<byte> requestQueue = new Queue<byte>();
 
-    //Whether current request has ended
+    // Whether the current request has ended
     bool endFlag = true;
 
-    // Read buffer
+    // Buffer for incoming data
     List<byte> readBuffer = new List<byte>();
 
-    // Read handler
+    // Handler to process incoming data
     Action<TcpClientWrapper, byte> readHandler;
 
-    // Mutex for thread-safing
+    // Mutex for thread safety
     private object dataLock = new object();
 
 
@@ -60,6 +64,7 @@ public class TcpClientWrapper
             client.Client.NoDelay = true;
             stream = client.GetStream();
             Debug.Log("Connected to server.");
+            // Start background thread to listen for incoming data
             clientReceiveThread = new Thread(new ThreadStart(ListenForData));
             clientReceiveThread.IsBackground = true;
             clientReceiveThread.Start();
@@ -70,21 +75,25 @@ public class TcpClientWrapper
         }
     }
 
+    // Set the endianness for byte order
     public void SetEndianness(Endianness endianness)
     {
         this.endianness = endianness;
     }
 
+    // Set the send mode (immediate or packet)
     public void SetSendMode(SendMode sendMode)
     {
         this.sendMode = sendMode;
     }
 
+    // Set the handler for processing incoming data
     public void SetReadHandler(Action<TcpClientWrapper, byte> readHandler)
     {
         this.readHandler = readHandler;
     }
 
+    // Thread method: listens for incoming data and processes requests
     private void ListenForData()
     {
         try
@@ -102,6 +111,7 @@ public class TcpClientWrapper
                     {
                         readBuffer.AddRange(incomingData);
                     }
+                    // If a request is pending, process it using the handler
                     while (endFlag && getRequestQueueSize() > 0)
                     {
                         endFlag = false;
@@ -116,6 +126,7 @@ public class TcpClientWrapper
         }
     }
 
+    // Returns the size of the read buffer
     public int getReadBufferSize()
     {
         lock (dataLock)
@@ -124,6 +135,7 @@ public class TcpClientWrapper
         }
     }
 
+    // Await until the specified number of bytes are available in the read buffer
     public async Task AwaitBytes(int bytes)
     {
         while (getReadBufferSize() < bytes)
@@ -132,6 +144,7 @@ public class TcpClientWrapper
         }
     }
 
+    // Read a single byte from the buffer
     public byte readByte()
     {
         byte[] buffer = new byte[1];
@@ -139,6 +152,7 @@ public class TcpClientWrapper
         return buffer[0];
     }
 
+    // Read a specified number of bytes into the provided buffer
     public void readBytes(byte[] buffer)
     {
         lock (dataLock)
@@ -149,6 +163,7 @@ public class TcpClientWrapper
         }
     }
 
+    // Read a float (4 bytes) from the buffer, handling endianness
     public float readFloat()
     {
         try
@@ -166,6 +181,7 @@ public class TcpClientWrapper
         }
     }
 
+    // Read a Vector3 (3 floats) from the buffer
     public Vector3 readVector3()
     {
         Vector3 vector = new Vector3();
@@ -175,6 +191,7 @@ public class TcpClientWrapper
         return vector;
     }
 
+    // Read a Quaternion (4 floats) from the buffer
     public Quaternion readQuaternion()
     {
         Quaternion quaternion = new Quaternion();
@@ -185,6 +202,7 @@ public class TcpClientWrapper
         return quaternion;
     }
 
+    // Clear the read buffer
     public void flush()
     {
         lock (dataLock)
@@ -193,6 +211,7 @@ public class TcpClientWrapper
         }
     }
 
+    // Returns the size of the send buffer
     public int getSendBufferSize()
     {
         lock (dataLock)
@@ -201,6 +220,7 @@ public class TcpClientWrapper
         }
     }
 
+    // Send the current packet (all data in send buffer)
     public void sendPacket()
     {
         if (stream != null)
@@ -217,6 +237,7 @@ public class TcpClientWrapper
         }
     }
 
+    // Clear the current request from the queue and mark as ended
     public void clearPacket()
     {
         lock (dataLock)
@@ -226,11 +247,13 @@ public class TcpClientWrapper
         }
     }
     
+    // Add a single byte to the send buffer
     public void sendByte(byte value)
     {
         sendBytes(new byte[] { value });
     }
 
+    // Add a header byte to the send buffer and queue
     public void sendHeader(byte value)
     {
         sendByte(value);
@@ -240,6 +263,7 @@ public class TcpClientWrapper
         }
     }
 
+    // Returns the number of pending requests in the queue
     public int getRequestQueueSize()
     {
         lock (dataLock)
@@ -248,6 +272,7 @@ public class TcpClientWrapper
         }
     }
 
+    // Add a byte array to the send buffer (and send immediately if in IMMEDIATE mode)
     public void sendBytes(byte[] buffer)
     {
         sendBuffer.AddRange(buffer);
@@ -259,6 +284,7 @@ public class TcpClientWrapper
         }
     }
 
+    // Add a float to the send buffer, handling endianness
     public void sendFloat(float value)
     {
             byte[] buffer = BitConverter.GetBytes(value);
@@ -266,6 +292,7 @@ public class TcpClientWrapper
             sendBytes(buffer);
     }
 
+    // Add a Vector3 (3 floats) to the send buffer
     public void sendVector3(Vector3 vector)
     {
         sendFloat(vector.x);
@@ -273,6 +300,7 @@ public class TcpClientWrapper
         sendFloat(vector.z);
     }
 
+    // Add a Quaternion (4 floats) to the send buffer
     public void sendQuaternion(Quaternion quaternion)
     {
         sendFloat(quaternion.x);
@@ -281,6 +309,7 @@ public class TcpClientWrapper
         sendFloat(quaternion.w);
     }
 
+    // Close the connection and clean up resources
     public void Close()
     {
         // Clean up resources when the application quits
