@@ -71,8 +71,8 @@ public class HapticShadow : MonoBehaviour
             // Projects along velocity direction
             Vector3 contactPoint = relVel.normalized * proximity;
 
-            // Finds approximate collision normal
-            Vector3 collisionNormal = (selfToOther.normal - contactToSelf.normal).normalized;
+            // Finds collision normal
+            Vector3 collisionNormal = selfToOther.normal;
 
             // Gets mass
             float selfMass = self.attachedRigidbody.mass;

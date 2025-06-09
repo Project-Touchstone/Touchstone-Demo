@@ -1526,7 +1526,7 @@ MonoBehaviour:
   nodeObject: {fileID: 1995008541}
   forceFeedback: 1
   planeFeedback: 1
-  inertia: 1
+  inertia: 0
   stiffness: 1
   damping: 1
   minForce: 0.01

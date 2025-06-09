@@ -57,8 +57,6 @@ public class HapticNode : MonoBehaviour
     // Data mutex
     private object dataLock = new object();
 
-    //private int sign = 1;
-
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
@@ -89,8 +87,8 @@ public class HapticNode : MonoBehaviour
     // Fixed update is called once per physics frame
     void FixedUpdate()
     {
-        /*mirrorPos += new Vector3(0f, sign * 0.01f, 0f);
-        sign *= -1;*/
+        // Updates debug movement if debug mode is enabled
+        UpdateDebugMovement();
         // Update kinematics of the mirror object
         UpdateKinematics();
         // Calculate the force and torque on the shadow object
@@ -101,11 +99,18 @@ public class HapticNode : MonoBehaviour
 
         // Calculate the force to emulate on the mirror object
         Vector3 force = -forceOnShadow;
-        if (!haptics.inertia)
+        // Removes spring component of shadow object from the force vector
+        force += GetSpringComponent();
+
+        // If inertia is enabled, adds inertial force to the mirror
+        if (haptics.inertia)
         {
-            // Removes inertial component of shadow object from the force vector
-            force += GetInertialComponent();
+            // Gets inertial force on mirror object
+            Vector3 inertialForce = - shadowRb.mass * mirrorAccel / Time.fixedDeltaTime;
+            // Adds inertial force to the force vector
+            force += inertialForce;
         }
+        
         // Clamps force to minimum
         if (force.magnitude < haptics.minForce)
         {
@@ -160,10 +165,15 @@ public class HapticNode : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        
+    }
+
+    private void UpdateDebugMovement()
+    {
         // Updates player movement
         if (haptics.debugMode)
         {
-            // Moves mirror object with arrow keys
+            // Moves mirror object in 3d with arrow keys
             if (Input.GetKey(KeyCode.UpArrow))
             {
                 mirrorPos += Vector3.up * Time.deltaTime * haptics.debugMovementSpeed;
@@ -310,7 +320,7 @@ public class HapticNode : MonoBehaviour
         return torque;
     }
 
-    private Vector3 GetInertialComponent()
+    private Vector3 GetSpringComponent()
     {
         //Gets previous mirror and shadow positions
         Vector3 mirrorPosCopy = mirrorObject.transform.position;
