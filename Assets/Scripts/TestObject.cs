@@ -13,11 +13,12 @@ public class TestObject : MonoBehaviour
     }
 
     // Update is called once per frame
-    void Update()
+    void FixedUpdate()
     {
+        rb.WakeUp();
         if (Input.GetKeyDown(KeyCode.Space))
         {
-            rb.useGravity = true;
+            rb.AddForce(new Vector3(0f, -5f, 0f));
         }
     }
 }
