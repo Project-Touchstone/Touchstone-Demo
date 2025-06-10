@@ -18,8 +18,8 @@ public class HapticRenderClient : MonoBehaviour
     // Whether force feedback is sent to server
     public bool forceFeedback = true;
 
-    // Whether plane feedback is sent to server
-    public bool planeFeedback = true;
+    // Whether collision feedback is sent to server
+    public bool collisionFeedback = true;
 
     // Whether inertia is enabled
     public bool inertia = false;
@@ -139,7 +139,7 @@ public class HapticRenderClient : MonoBehaviour
             }
             case (byte)Headers.COLLISION_FEEDBACK:
             {
-                // Checks for plane feedback response
+                // Checks for collision feedback response
                 byte feedbackResponse = client.readByte();
                 if (feedbackResponse != (byte)Headers.ACK)
                 {
@@ -153,7 +153,7 @@ public class HapticRenderClient : MonoBehaviour
 
     public void SendCollisionCandidate(HapticShadow.CollisionCandidate candidate)
     {
-        if (!debugMode && planeFeedback)
+        if (!debugMode && collisionFeedback)
         {
             lock (commLock)
             {
