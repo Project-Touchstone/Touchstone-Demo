@@ -31,9 +31,6 @@ public class HapticRenderClient : MonoBehaviour
     //Minimum force
     public float minForce = 0.01f;
 
-    // Reaction speed
-    public float reactionSpeed = 0.01f;
-
     // Whether visualization is enabled
     public bool visualization = false;
 
@@ -56,7 +53,7 @@ public class HapticRenderClient : MonoBehaviour
         // Headers from client to server
         NODE_DATA = 0x1,
         FORCE_FEEDBACK = 0x2,
-        PLANE_FEEDBACK = 0x3,
+        COLLISION_FEEDBACK = 0x3,
 
         //Headers from server to client
         ACK = 0x1,
@@ -140,13 +137,13 @@ public class HapticRenderClient : MonoBehaviour
                 client.clearPacket();
                 break;
             }
-            case (byte)Headers.PLANE_FEEDBACK:
+            case (byte)Headers.COLLISION_FEEDBACK:
             {
                 // Checks for plane feedback response
                 byte feedbackResponse = client.readByte();
                 if (feedbackResponse != (byte)Headers.ACK)
                 {
-                    Debug.LogError("Force feedback not acknowledged by server");
+                    Debug.LogError("Collision feedback not acknowledged by server");
                 }
                 client.clearPacket();
                 break;
@@ -160,10 +157,11 @@ public class HapticRenderClient : MonoBehaviour
         {
             lock (commLock)
             {
-                client.sendHeader((byte)Headers.PLANE_FEEDBACK);
-                // Send the contact point and plane normal to the server
-                client.sendVector3(unityToHardwarePos(candidate.getContactPoint()));
-                client.sendVector3(unityToHardwareForce(candidate.getPlaneNormal()));
+                client.sendHeader((byte)Headers.COLLISION_FEEDBACK);
+                // Send the contact point, collision normal, and time until collision to the server
+                client.sendVector3(unityToHardwarePos(nodeObject.transform.position + candidate.getCollisionPoint()));
+                client.sendVector3(unityToHardwareForce(candidate.getCollisionNormal()));
+                client.sendFloat(candidate.getTimeUntilCollision());
                 client.sendPacket();
             }
         }

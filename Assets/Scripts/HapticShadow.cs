@@ -16,18 +16,21 @@ public class HapticShadow : MonoBehaviour
     {
         // Net momentum change vector
         private Vector3 momentumChange = Vector3.zero;
-        // Contact point
-        private Vector3 contactPoint = Vector3.zero;
+        // Collision point
+        private Vector3 collisionPoint = Vector3.zero;
+        // Time until collision
+        private float timeUntilCollision = 0f;
         public CollisionCandidate()
         {
         }
-        public CollisionCandidate(Vector3 contactPoint, Vector3 momentumChange)
+        public CollisionCandidate(Vector3 collisionPoint, Vector3 momentumChange, float timeUntilCollision)
         {
-            this.contactPoint = contactPoint;
+            this.collisionPoint = collisionPoint;
             this.momentumChange = momentumChange;
+            this.timeUntilCollision = timeUntilCollision;
         }
 
-        public static bool fromRaycast(float reactionSpeed, Collider self, Collider other, out CollisionCandidate result)
+        public static bool fromRaycast(Collider self, Collider other, out CollisionCandidate result)
         {
             // Gets velocity of self relative to other object
             Vector3 selfVel = self.attachedRigidbody.linearVelocity;
@@ -65,11 +68,11 @@ public class HapticShadow : MonoBehaviour
                 return false;
             }
 
-            // Gets time-based proximity
-            float distance = contactToSelf.distance;
-            float proximity = distance / relVel.magnitude * reactionSpeed;
-            // Projects along velocity direction
-            Vector3 contactPoint = relVel.normalized * proximity;
+            // Gets time until collision
+            float timeUntilCollision = contactToSelf.distance / relVel.magnitude;
+            
+            // Gets object position at collision by projecting along self velocity
+            Vector3 collisionPoint = selfVel * timeUntilCollision;
 
             // Finds collision normal
             Vector3 collisionNormal = selfToOther.normal;
@@ -98,21 +101,21 @@ public class HapticShadow : MonoBehaviour
             }
 
             // Creates collision candidate
-            result = new CollisionCandidate(contactPoint, momentumChange);
+            result = new CollisionCandidate(collisionPoint, momentumChange, timeUntilCollision);
             return true;
         }
 
-        public float getProximity()
+        public float getTimeUntilCollision()
         {
-            return contactPoint.magnitude;
+            return timeUntilCollision;
         }
 
-        public Vector3 getContactPoint()
+        public Vector3 getCollisionPoint()
         {
-            return contactPoint;
+            return collisionPoint;
         }
 
-        public Vector3 getPlaneNormal()
+        public Vector3 getCollisionNormal()
         {
             return momentumChange.normalized;
         }
@@ -140,16 +143,16 @@ public class HapticShadow : MonoBehaviour
                 return 1;
             }
 
-            // Compares proximity
-            float prox = getProximity();
-            float otherProx = other.getProximity();
+            // Compares times until collision
+            float time = getTimeUntilCollision();
+            float otherTime = other.getTimeUntilCollision();
 
-            if (otherProx >= 2 * prox)
+            if (otherTime >= 2 * time)
             {
                 // If other is at least twice as far, self is more urgent
                 return 1;
             }
-            else if (prox >= 2 * otherProx)
+            else if (time >= 2 * otherTime)
             {
                 // If self is at least twice as far, other is more urgent
                 return -1;
@@ -166,10 +169,11 @@ public class HapticShadow : MonoBehaviour
             // Adds momentum change
             momentumChange += other.getMomentumChange();
 
-            // Uses closest contact point
-            if (other.getProximity() < getProximity())
+            // Uses closest time and corresponding collision point
+            if (other.getTimeUntilCollision() < getTimeUntilCollision())
             {
-                contactPoint = other.getContactPoint();
+                timeUntilCollision = other.getTimeUntilCollision();
+                collisionPoint = other.getCollisionPoint();
             }
         }
     }
@@ -215,7 +219,7 @@ public class HapticShadow : MonoBehaviour
             return;
         }
         CollisionCandidate candidate;
-        if (CollisionCandidate.fromRaycast(node.GetHaptics().reactionSpeed, shadowCollider, other, out candidate))
+        if (CollisionCandidate.fromRaycast(shadowCollider, other, out candidate))
         {
             // Determines combination behavior
             int result = currCandidate.compareTo(candidate);

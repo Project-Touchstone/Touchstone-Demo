@@ -15,10 +15,10 @@ public class TestObject : MonoBehaviour
     // Update is called once per frame
     void FixedUpdate()
     {
-        rb.WakeUp();
         if (Input.GetKeyDown(KeyCode.Space))
         {
-            rb.AddForce(new Vector3(0f, -5f, 0f));
+            // Adds force to local up direction
+            rb.AddForce(transform.up * 0.001f, ForceMode.Impulse);
         }
     }
 }
