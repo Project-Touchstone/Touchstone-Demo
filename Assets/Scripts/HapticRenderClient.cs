@@ -24,6 +24,9 @@ public class HapticRenderClient : MonoBehaviour
     // Whether inertia is enabled
     public bool inertia = false;
 
+    // Checkbox for enabling gravity on HapticShadow
+    public bool gravity = false;
+
     // Stiffness and damping coefficients
     public float stiffness = 1f;
     public float damping = 1f;
@@ -50,20 +53,24 @@ public class HapticRenderClient : MonoBehaviour
 
     public enum Headers
     {
-        // Headers from client to server
+        // NODE_DATA: 0 bytes, 28 byte response (3 float cartesian position, 4 float quaternion orientation (i, j, k, w))
         NODE_DATA = 0x1,
+        // FORCE_FEEDBACK: 12 bytes (3 float force), 0 byte response
         FORCE_FEEDBACK = 0x2,
+        // COLLISION_FEEDBACK: 28 bytes (3 float point, 3 float normal, 1 float time to collision seconds), 0 byte response
         COLLISION_FEEDBACK = 0x3,
 
-        //Headers from server to client
+        // ACK: Followed by response data
         ACK = 0x1,
+        // NACK: 0 bytes
         NACK = 0x2
     }
 
     // Haptic node script attached to node object
     private HapticNode node;
 
-    //private int sign = 1;
+    // Cache previous gravity state
+    private bool prevGravity;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     async void Start()
@@ -72,6 +79,12 @@ public class HapticRenderClient : MonoBehaviour
         node = nodeObject.GetComponent<HapticNode>();
         // Sets haptic render client
         node.SetHaptics(this);
+
+        // Set initial gravity state on HapticShadow's Rigidbody
+        var shadowObj = node.shadowObject;
+        var shadowRb = shadowObj.GetComponent<Rigidbody>();
+        shadowRb.useGravity = gravity;
+        prevGravity = gravity;
 
         //Handles client setup
         client = new TcpClientWrapper();
@@ -176,7 +189,16 @@ public class HapticRenderClient : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        
+        // Update gravity state if changed
+        if (node != null && node.shadowObject != null)
+        {
+            if (gravity != prevGravity)
+            {
+                var shadowRb = node.shadowObject.GetComponent<Rigidbody>();
+                shadowRb.useGravity = gravity;
+                prevGravity = gravity;
+            }
+        }
     }
 
     private Vector3 hardwareToUnityForce(Vector3 force)
@@ -207,8 +229,7 @@ public class HapticRenderClient : MonoBehaviour
 
     private Vector3 unityToHardwarePos(Vector3 pos)
     {
-        // Converts from m to mm
-        return unityToHardwareForce(pos) * 1000f;
+        return unityToHardwareForce(pos);
     }
 
     private Quaternion unityToHardwareRot(Quaternion quaternion)

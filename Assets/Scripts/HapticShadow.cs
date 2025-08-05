@@ -23,6 +23,10 @@ public class HapticShadow : MonoBehaviour
         public CollisionCandidate()
         {
         }
+        // Copy constructor
+        public CollisionCandidate(CollisionCandidate other) : this(other.getCollisionPoint(), other.getMomentumChange(), other.getTimeUntilCollision())
+        {
+        }
         public CollisionCandidate(Vector3 collisionPoint, Vector3 momentumChange, float timeUntilCollision)
         {
             this.collisionPoint = collisionPoint;
@@ -72,7 +76,7 @@ public class HapticShadow : MonoBehaviour
             float timeUntilCollision = contactToSelf.distance / relVel.magnitude;
             
             // Gets object position at collision by projecting along self velocity
-            Vector3 collisionPoint = selfVel * timeUntilCollision;
+            Vector3 collisionPoint = self.transform.position + selfVel * timeUntilCollision;
 
             // Finds collision normal
             Vector3 collisionNormal = selfToOther.normal;
@@ -127,7 +131,7 @@ public class HapticShadow : MonoBehaviour
 
         public bool isValid()
         {
-            return (momentumChange.magnitude > 0);
+            return momentumChange.magnitude > 0;
         }
 
         public int compareTo(CollisionCandidate other)
@@ -188,7 +192,7 @@ public class HapticShadow : MonoBehaviour
         this.node = node;
     }
 
-    void LateUpdate()
+    void FixedUpdate()
     {
         // Updates haptic node with current collision candidate after all collisions are evaluated
         node.UpdateCollisionCandidate(currCandidate);

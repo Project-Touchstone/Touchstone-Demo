@@ -153,7 +153,7 @@ public class HapticNode : MonoBehaviour
         {
             collisionVisual.SetActive(true);
             // Positions and orients to match collision plane
-            collisionVisual.transform.position = shadowObject.transform.position + currCandidate.getCollisionPoint();
+            collisionVisual.transform.position = currCandidate.getCollisionPoint();
             collisionVisual.transform.rotation = Quaternion.LookRotation(Vector3.forward, currCandidate.getCollisionNormal());
         }
         else
@@ -345,8 +345,8 @@ public class HapticNode : MonoBehaviour
             haptics.SendCollisionCandidate(candidate);
         }
 
-        // Updates current collision candidate
-        currCandidate = candidate;
+        // Updates current collision candidate using copy constructor
+        currCandidate = new HapticShadow.CollisionCandidate(candidate);
     }
 
     private float MomentOfInertiaAlongAxis(Rigidbody rb, Vector3 axis)
