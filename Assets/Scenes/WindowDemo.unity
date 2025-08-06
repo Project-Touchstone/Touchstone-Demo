@@ -265,10 +265,10 @@ Rigidbody:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 84159652}
-  serializedVersion: 4
+  serializedVersion: 5
   m_Mass: 0.01
-  m_Drag: 0
-  m_AngularDrag: 0
+  m_LinearDamping: 0
+  m_AngularDamping: 0
   m_CenterOfMass: {x: 0, y: 0, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
@@ -1774,15 +1774,16 @@ MonoBehaviour:
   serverAddress: 127.0.0.1
   serverPort: 8080
   nodeObject: {fileID: 1995008541}
-  forceFeedback: 1
-  planeFeedback: 1
+  forceFeedback: 0
+  collisionFeedback: 0
   inertia: 0
+  gravity: 0
   stiffness: 1
   damping: 1
   minForce: 0.01
   visualization: 1
   forceVisualScale: 100
-  debugMode: 1
+  debugMode: 0
   debugMovementSpeed: 0.1
 --- !u!4 &1716128711
 Transform:

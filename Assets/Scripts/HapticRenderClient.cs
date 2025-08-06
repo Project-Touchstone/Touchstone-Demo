@@ -110,7 +110,7 @@ public class HapticRenderClient : MonoBehaviour
                     client.sendVector3(unityToHardwareForce(node.GetForceOnMirror()));
                 }
                 // Send a request to the server for node data
-                client.sendByte((byte)Headers.NODE_DATA);
+                client.sendHeader((byte)Headers.NODE_DATA);
                 client.sendPacket();
             }
         }
@@ -120,47 +120,47 @@ public class HapticRenderClient : MonoBehaviour
         switch (request)
         {
             case (byte)Headers.NODE_DATA:
-            {
-                if (client.getReadBufferSize() >= 29)
                 {
-                    // Parses node data
-                    byte response = client.readByte();
-                    if (response == (byte)Headers.ACK)
+                    if (client.getReadBufferSize() >= 29)
                     {
-                        // Read the position, velocity, and orientation data from the server
-                        Vector3 position = client.readVector3();
-                        Quaternion orientation = client.readQuaternion();
-                        // Update the node object's position and orientation with converted data
-                        node.SetMirrorPos(hardwareToUnityPos(position));
-                        node.SetMirrorRot(hardwareToUnityRot(orientation));
-                        //Debug.Log($"Received position: {position}, orientation: {orientation}");
+                        // Parses node data
+                        byte response = client.readByte();
+                        if (response == (byte)Headers.ACK)
+                        {
+                            // Read the position, velocity, and orientation data from the server
+                            Vector3 position = client.readVector3();
+                            Quaternion orientation = client.readQuaternion();
+                            // Update the node object's position and orientation with converted data
+                            node.SetMirrorPos(hardwareToUnityPos(position));
+                            node.SetMirrorRot(hardwareToUnityRot(orientation));
+                            //Debug.Log($"Received position: {position}, orientation: {orientation}");
+                        }
                     }
+                    client.clearPacket();
+                    break;
                 }
-                client.clearPacket();
-                break;
-            }
             case (byte)Headers.FORCE_FEEDBACK:
-            {
-                // Checks for force feedback response
-                byte feedbackResponse = client.readByte();
-                if (feedbackResponse != (byte)Headers.ACK)
                 {
-                    Debug.LogError("Force feedback not acknowledged by server");
+                    // Checks for force feedback response
+                    byte feedbackResponse = client.readByte();
+                    if (feedbackResponse != (byte)Headers.ACK)
+                    {
+                        Debug.LogError("Force feedback not acknowledged by server");
+                    }
+                    client.clearPacket();
+                    break;
                 }
-                client.clearPacket();
-                break;
-            }
             case (byte)Headers.COLLISION_FEEDBACK:
-            {
-                // Checks for collision feedback response
-                byte feedbackResponse = client.readByte();
-                if (feedbackResponse != (byte)Headers.ACK)
                 {
-                    Debug.LogError("Collision feedback not acknowledged by server");
+                    // Checks for collision feedback response
+                    byte feedbackResponse = client.readByte();
+                    if (feedbackResponse != (byte)Headers.ACK)
+                    {
+                        Debug.LogError("Collision feedback not acknowledged by server");
+                    }
+                    client.clearPacket();
+                    break;
                 }
-                client.clearPacket();
-                break;
-            }
         }
     }
 
@@ -210,8 +210,7 @@ public class HapticRenderClient : MonoBehaviour
 
     private Vector3 hardwareToUnityPos(Vector3 pos)
     {
-        // Converts from mm to m
-        return hardwareToUnityForce(pos) / 1000f;
+        return hardwareToUnityForce(pos);
     }
 
     private Quaternion hardwareToUnityRot(Quaternion quaternion)
