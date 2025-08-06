@@ -46,6 +46,9 @@ public class TcpClientWrapper
     // Buffer for incoming data
     List<byte> readBuffer = new List<byte>();
 
+    // Byte for current response header
+    byte responseHeader;
+
     // Handler to process incoming data
     Action<TcpClientWrapper, byte> readHandler;
 
@@ -112,9 +115,10 @@ public class TcpClientWrapper
                         readBuffer.AddRange(incomingData);
                     }
                     // If a request is pending, process it using the handler
-                    while (endFlag && getRequestQueueSize() > 0)
+                    while (endFlag && getReadBufferSize() > 0 && getRequestQueueSize() > 0)
                     {
                         endFlag = false;
+                        responseHeader = readByte();
                         readHandler(this, requestQueue.Peek());
                     }
                 }
@@ -142,6 +146,11 @@ public class TcpClientWrapper
         {
             await Task.Yield();
         }
+    }
+
+    public byte getResponseHeader()
+    {
+        return responseHeader;
     }
 
     // Read a single byte from the buffer

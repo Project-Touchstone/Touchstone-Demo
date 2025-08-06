@@ -375,7 +375,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &197953444
 Transform:
   m_ObjectHideFlags: 0
@@ -1439,7 +1439,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 28c2a83adf01b7545b89abada1f1b178, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2095746599339511693, guid: 28c2a83adf01b7545b89abada1f1b178, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -1778,7 +1778,7 @@ MonoBehaviour:
   collisionFeedback: 0
   inertia: 0
   gravity: 0
-  stiffness: 1
+  stiffness: 0.1
   damping: 1
   minForce: 0.01
   visualization: 1

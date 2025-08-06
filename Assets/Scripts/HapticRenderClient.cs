@@ -121,11 +121,9 @@ public class HapticRenderClient : MonoBehaviour
         {
             case (byte)Headers.NODE_DATA:
                 {
-                    if (client.getReadBufferSize() >= 29)
+                    if (client.getResponseHeader() == (byte)Headers.ACK)
                     {
-                        // Parses node data
-                        byte response = client.readByte();
-                        if (response == (byte)Headers.ACK)
+                        if (client.getReadBufferSize() >= 28)
                         {
                             // Read the position, velocity, and orientation data from the server
                             Vector3 position = client.readVector3();
@@ -134,16 +132,21 @@ public class HapticRenderClient : MonoBehaviour
                             node.SetMirrorPos(hardwareToUnityPos(position));
                             node.SetMirrorRot(hardwareToUnityRot(orientation));
                             //Debug.Log($"Received position: {position}, orientation: {orientation}");
+                            // Clear the packet
+                            client.clearPacket();
                         }
                     }
-                    client.clearPacket();
+                    else
+                    {
+                        // If the response is not an ACK, log an error
+                        Debug.LogError("Node data not acknowledged by server");
+                        client.clearPacket();
+                    }
                     break;
                 }
             case (byte)Headers.FORCE_FEEDBACK:
                 {
-                    // Checks for force feedback response
-                    byte feedbackResponse = client.readByte();
-                    if (feedbackResponse != (byte)Headers.ACK)
+                    if (client.getResponseHeader() != (byte)Headers.ACK)
                     {
                         Debug.LogError("Force feedback not acknowledged by server");
                     }
@@ -152,9 +155,7 @@ public class HapticRenderClient : MonoBehaviour
                 }
             case (byte)Headers.COLLISION_FEEDBACK:
                 {
-                    // Checks for collision feedback response
-                    byte feedbackResponse = client.readByte();
-                    if (feedbackResponse != (byte)Headers.ACK)
+                    if (client.getResponseHeader() != (byte)Headers.ACK)
                     {
                         Debug.LogError("Collision feedback not acknowledged by server");
                     }
