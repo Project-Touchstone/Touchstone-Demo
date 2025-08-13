@@ -248,23 +248,4 @@ public class HapticShadow : MonoBehaviour
             //Otherwise keeps more urgent current candidate
         }
     }
-
-    void OnCollisionEnter(Collision collision) {
-        //Zeros velocity relative to other object in the direction of momentum transfer
-
-        // Gets velocity of other object (if no rigidbody, velocity is assumed to be zero)
-        Vector3 otherVel = Vector3.zero;
-        if (collision.body as Rigidbody) {
-            otherVel = ((Rigidbody)collision.body).linearVelocity;
-        }
-
-        // Gets relative velocity of self
-        Vector3 relVel = shadowRigidbody.linearVelocity - otherVel;
-
-        // Gets direction of momentum transfer
-        Vector3 collisionNormal = collision.impulse.normalized;
-
-        // Subtracts relative velocity in direction of collision normal
-        shadowRigidbody.linearVelocity -= Vector3.Dot(relVel, collisionNormal) * collisionNormal;
-    }
 }
