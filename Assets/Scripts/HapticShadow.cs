@@ -5,6 +5,9 @@ public class HapticShadow : MonoBehaviour
     // Haptic node script
     public HapticNode node;
 
+    // Self rigid body
+    public Rigidbody shadowRigidbody;
+
     // Self collider
     public Collider shadowCollider;
 
@@ -14,22 +17,26 @@ public class HapticShadow : MonoBehaviour
     // Collision candidate class
     public class CollisionCandidate
     {
-        // Net momentum change vector
-        private Vector3 momentumChange = Vector3.zero;
         // Collision point
         private Vector3 collisionPoint = Vector3.zero;
+        // Collision normal vecotr
+        private Vector3 collisionNormal = Vector3.zero;
+        // Net momentum change vector
+        private Vector3 momentumChange = Vector3.zero;
         // Time until collision
         private float timeUntilCollision = 0f;
+
         public CollisionCandidate()
         {
         }
         // Copy constructor
-        public CollisionCandidate(CollisionCandidate other) : this(other.getCollisionPoint(), other.getMomentumChange(), other.getTimeUntilCollision())
+        public CollisionCandidate(CollisionCandidate other) : this(other.getCollisionPoint(), other.getCollisionNormal(), other.getMomentumChange(), other.getTimeUntilCollision())
         {
         }
-        public CollisionCandidate(Vector3 collisionPoint, Vector3 momentumChange, float timeUntilCollision)
+        public CollisionCandidate(Vector3 collisionPoint, Vector3 collisionNormal, Vector3 momentumChange, float timeUntilCollision)
         {
             this.collisionPoint = collisionPoint;
+            this.collisionNormal = collisionNormal;
             this.momentumChange = momentumChange;
             this.timeUntilCollision = timeUntilCollision;
         }
@@ -78,7 +85,7 @@ public class HapticShadow : MonoBehaviour
             // Gets object position at collision by projecting along self velocity
             Vector3 collisionPoint = self.transform.position + selfVel * timeUntilCollision;
 
-            // Finds collision normal
+            // Finds global collision normal
             Vector3 collisionNormal = selfToOther.normal;
 
             // Gets mass
@@ -105,7 +112,7 @@ public class HapticShadow : MonoBehaviour
             }
 
             // Creates collision candidate
-            result = new CollisionCandidate(collisionPoint, momentumChange, timeUntilCollision);
+            result = new CollisionCandidate(collisionPoint, collisionNormal, momentumChange, timeUntilCollision);
             return true;
         }
 
@@ -121,7 +128,7 @@ public class HapticShadow : MonoBehaviour
 
         public Vector3 getCollisionNormal()
         {
-            return momentumChange.normalized;
+            return collisionNormal;
         }
 
         public Vector3 getMomentumChange()
@@ -185,6 +192,7 @@ public class HapticShadow : MonoBehaviour
     void Start()
     {
         shadowCollider = this.GetComponent<Collider>();
+        shadowRigidbody = this.GetComponent<Rigidbody>();
     }
 
     public void SetHapticNode(HapticNode node)
@@ -239,5 +247,24 @@ public class HapticShadow : MonoBehaviour
             }
             //Otherwise keeps more urgent current candidate
         }
+    }
+
+    void OnCollisionEnter(Collision collision) {
+        //Zeros velocity relative to other object in the direction of momentum transfer
+
+        // Gets velocity of other object (if no rigidbody, velocity is assumed to be zero)
+        Vector3 otherVel = Vector3.zero;
+        if (collision.body as Rigidbody) {
+            otherVel = ((Rigidbody)collision.body).linearVelocity;
+        }
+
+        // Gets relative velocity of self
+        Vector3 relVel = shadowRigidbody.linearVelocity - otherVel;
+
+        // Gets direction of momentum transfer
+        Vector3 collisionNormal = collision.impulse.normalized;
+
+        // Subtracts relative velocity in direction of collision normal
+        shadowRigidbody.linearVelocity -= Vector3.Dot(relVel, collisionNormal) * collisionNormal;
     }
 }

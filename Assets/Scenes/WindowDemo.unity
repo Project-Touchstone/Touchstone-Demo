@@ -266,7 +266,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 84159652}
   serializedVersion: 5
-  m_Mass: 0.01
+  m_Mass: 1
   m_LinearDamping: 0
   m_AngularDamping: 0
   m_CenterOfMass: {x: 0, y: 0, z: 0}
@@ -315,6 +315,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   node: {fileID: 0}
+  shadowRigidbody: {fileID: 0}
   shadowCollider: {fileID: 0}
 --- !u!135 &84159657
 SphereCollider:
@@ -375,7 +376,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &197953444
 Transform:
   m_ObjectHideFlags: 0
@@ -729,6 +730,18 @@ PrefabInstance:
     - target: {fileID: 3078884001538721769, guid: 0886c7611c132684ea26007d1113e53c, type: 3}
       propertyPath: m_Name
       value: Cube (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 3078884001538721769, guid: 0886c7611c132684ea26007d1113e53c, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7135319289352761501, guid: 0886c7611c132684ea26007d1113e53c, type: 3}
+      propertyPath: force
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7157941170990020994, guid: 0886c7611c132684ea26007d1113e53c, type: 3}
+      propertyPath: m_Mass
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -1125,7 +1138,7 @@ GameObject:
   - component: {fileID: 1015830914}
   - component: {fileID: 1015830913}
   - component: {fileID: 1015830912}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Ground
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1439,7 +1452,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 28c2a83adf01b7545b89abada1f1b178, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2095746599339511693, guid: 28c2a83adf01b7545b89abada1f1b178, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -1783,7 +1796,7 @@ MonoBehaviour:
   minForce: 0.01
   visualization: 1
   forceVisualScale: 100
-  debugMode: 0
+  debugMode: 1
   debugMovementSpeed: 0.1
 --- !u!4 &1716128711
 Transform:
@@ -1917,11 +1930,11 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 973805034413806833, guid: 0886c7611c132684ea26007d1113e53c, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.075
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 973805034413806833, guid: 0886c7611c132684ea26007d1113e53c, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.075
+      value: 0.134
       objectReference: {fileID: 0}
     - target: {fileID: 973805034413806833, guid: 0886c7611c132684ea26007d1113e53c, type: 3}
       propertyPath: m_LocalPosition.z
@@ -1929,7 +1942,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 973805034413806833, guid: 0886c7611c132684ea26007d1113e53c, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.38268343
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 973805034413806833, guid: 0886c7611c132684ea26007d1113e53c, type: 3}
       propertyPath: m_LocalRotation.x
@@ -1941,7 +1954,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 973805034413806833, guid: 0886c7611c132684ea26007d1113e53c, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.92387956
+      value: -1
       objectReference: {fileID: 0}
     - target: {fileID: 973805034413806833, guid: 0886c7611c132684ea26007d1113e53c, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -1953,11 +1966,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 973805034413806833, guid: 0886c7611c132684ea26007d1113e53c, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: -135
+      value: -180
       objectReference: {fileID: 0}
     - target: {fileID: 3078884001538721769, guid: 0886c7611c132684ea26007d1113e53c, type: 3}
       propertyPath: m_Name
       value: Cube
+      objectReference: {fileID: 0}
+    - target: {fileID: 7135319289352761501, guid: 0886c7611c132684ea26007d1113e53c, type: 3}
+      propertyPath: force
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7157941170990020994, guid: 0886c7611c132684ea26007d1113e53c, type: 3}
+      propertyPath: m_Mass
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

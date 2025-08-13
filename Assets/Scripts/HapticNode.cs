@@ -137,7 +137,7 @@ public class HapticNode : MonoBehaviour
         {
             forceVisual.SetActive(true);
             //Scales and orients force visual by force
-            forceVisual.transform.rotation = Quaternion.LookRotation(Vector3.forward, force.normalized);
+            forceVisual.transform.rotation = Quaternion.FromToRotation(Vector3.up, force.normalized);
             forceVisual.transform.localScale = new Vector3(1f, force.magnitude * haptics.forceVisualScale, 1f);
         }
         else
@@ -154,7 +154,7 @@ public class HapticNode : MonoBehaviour
             collisionVisual.SetActive(true);
             // Positions and orients to match collision plane
             collisionVisual.transform.position = currCandidate.getCollisionPoint();
-            collisionVisual.transform.rotation = Quaternion.LookRotation(Vector3.forward, currCandidate.getCollisionNormal());
+            collisionVisual.transform.rotation = Quaternion.FromToRotation(Vector3.up, currCandidate.getCollisionNormal());
         }
         else
         {
