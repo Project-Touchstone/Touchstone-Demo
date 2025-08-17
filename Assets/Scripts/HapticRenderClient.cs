@@ -90,7 +90,7 @@ public class HapticRenderClient : MonoBehaviour
         client = new TcpClientWrapper();
         // Sets endianness and send mode
         client.SetEndianness(TcpClientWrapper.Endianness.BigEndian);
-        client.SetSendMode(TcpClientWrapper.SendMode.PACKET);
+        client.SetWriteMode(TcpClientWrapper.WriteMode.PACKET);
         // Sets read handler
         client.SetReadHandler(ReadHandler);
         await client.ConnectToServer(serverAddress, serverPort);
@@ -105,13 +105,13 @@ public class HapticRenderClient : MonoBehaviour
                 // Send feedback to the server
                 if (forceFeedback)
                 {
-                    client.sendHeader((byte)Headers.FORCE_FEEDBACK);
+                    client.writeHeader((byte)Headers.FORCE_FEEDBACK);
                     // Send the coverted force vector to the server
-                    client.sendVector3(unityToHardwareForce(node.GetForceOnMirror()));
+                    client.writeVector3(unityToHardwareForce(node.GetForceOnMirror()));
                 }
                 // Send a request to the server for node data
-                client.sendHeader((byte)Headers.NODE_DATA);
-                client.sendPacket();
+                client.writeHeader((byte)Headers.NODE_DATA);
+                client.writePacket();
             }
         }
     }
@@ -171,12 +171,12 @@ public class HapticRenderClient : MonoBehaviour
         {
             lock (commLock)
             {
-                client.sendHeader((byte)Headers.COLLISION_FEEDBACK);
+                client.writeHeader((byte)Headers.COLLISION_FEEDBACK);
                 // Send the contact point, collision normal, and time until collision to the server
-                client.sendVector3(unityToHardwarePos(nodeObject.transform.position + candidate.getCollisionPoint()));
-                client.sendVector3(unityToHardwareForce(candidate.getCollisionNormal()));
-                client.sendFloat(candidate.getTimeUntilCollision());
-                client.sendPacket();
+                client.writeVector3(unityToHardwarePos(nodeObject.transform.position + candidate.getCollisionPoint()));
+                client.writeVector3(unityToHardwareForce(candidate.getCollisionNormal()));
+                client.writeFloat(candidate.getTimeUntilCollision());
+                client.writePacket();
             }
         }
     }

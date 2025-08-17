@@ -10,7 +10,7 @@ public class TcpClientWrapper
 {
     // TcpClient for managing the connection
     private TcpClient client;
-    // NetworkStream for sending/receiving data
+    // NetworkStream for writeing/receiving data
     private NetworkStream stream;
     // Thread for receiving data asynchronously
     private Thread clientReceiveThread;
@@ -22,8 +22,8 @@ public class TcpClientWrapper
         BigEndian
     }
 
-    // Send mode types for controlling when data is sent
-    public enum SendMode
+    // write mode types for controlling when data is sent
+    public enum WriteMode
     {
         IMMEDIATE,
         PACKET
@@ -31,11 +31,11 @@ public class TcpClientWrapper
 
     // Current endianness (default: BigEndian)
     Endianness endianness = Endianness.BigEndian;
-    // Current send mode (default: PACKET)
-    SendMode sendMode = SendMode.PACKET;
+    // Current write mode (default: PACKET)
+    WriteMode writeMode = WriteMode.PACKET;
 
     // Buffer for outgoing data
-    List<byte> sendBuffer = new List<byte>();
+    List<byte> writeBuffer = new List<byte>();
 
     // Queue for request headers to track requests
     Queue<byte> requestQueue = new Queue<byte>();
@@ -84,10 +84,10 @@ public class TcpClientWrapper
         this.endianness = endianness;
     }
 
-    // Set the send mode (immediate or packet)
-    public void SetSendMode(SendMode sendMode)
+    // Set the write mode (immediate or packet)
+    public void SetWriteMode(WriteMode writeMode)
     {
-        this.sendMode = sendMode;
+        this.writeMode = writeMode;
     }
 
     // Set the handler for processing incoming data
@@ -220,28 +220,28 @@ public class TcpClientWrapper
         }
     }
 
-    // Returns the size of the send buffer
-    public int getSendBufferSize()
+    // Returns the size of the write buffer
+    public int getWriteBufferSize()
     {
         lock (dataLock)
         {
-            return sendBuffer.Count;
+            return writeBuffer.Count;
         }
     }
 
-    // Send the current packet (all data in send buffer)
-    public void sendPacket()
+    // write the current packet (all data in write buffer)
+    public void writePacket()
     {
         if (stream != null)
         {
             try
             {
-                stream.Write(sendBuffer.ToArray(), 0, sendBuffer.Count);
-                sendBuffer.Clear();
+                stream.Write(writeBuffer.ToArray(), 0, writeBuffer.Count);
+                writeBuffer.Clear();
             }
             catch (Exception ex)
             {
-                Debug.LogError($"Failed to send packet: {ex.Message}");
+                Debug.LogError($"Failed to write packet: {ex.Message}");
             }
         }
     }
@@ -256,16 +256,16 @@ public class TcpClientWrapper
         }
     }
     
-    // Add a single byte to the send buffer
-    public void sendByte(byte value)
+    // Add a single byte to the write buffer
+    public void writeByte(byte value)
     {
-        sendBytes(new byte[] { value });
+        writeBytes(new byte[] { value });
     }
 
-    // Add a header byte to the send buffer and queue
-    public void sendHeader(byte value)
+    // Add a header byte to the write buffer and queue
+    public void writeHeader(byte value)
     {
-        sendByte(value);
+        writeByte(value);
         lock (dataLock)
         {
             requestQueue.Enqueue(value);
@@ -281,41 +281,41 @@ public class TcpClientWrapper
         }
     }
 
-    // Add a byte array to the send buffer (and send immediately if in IMMEDIATE mode)
-    public void sendBytes(byte[] buffer)
+    // Add a byte array to the write buffer (and write immediately if in IMMEDIATE mode)
+    public void writeBytes(byte[] buffer)
     {
-        sendBuffer.AddRange(buffer);
+        writeBuffer.AddRange(buffer);
 
-        // Sends packet immediately if in immediate mode
-        if (sendMode == SendMode.IMMEDIATE)
+        // writes packet immediately if in immediate mode
+        if (writeMode == WriteMode.IMMEDIATE)
         {
-            sendPacket();
+            writePacket();
         }
     }
 
-    // Add a float to the send buffer, handling endianness
-    public void sendFloat(float value)
+    // Add a float to the write buffer, handling endianness
+    public void writeFloat(float value)
     {
             byte[] buffer = BitConverter.GetBytes(value);
             Array.Reverse(buffer); // Reverse the byte order to convert to big-endian
-            sendBytes(buffer);
+            writeBytes(buffer);
     }
 
-    // Add a Vector3 (3 floats) to the send buffer
-    public void sendVector3(Vector3 vector)
+    // Add a Vector3 (3 floats) to the write buffer
+    public void writeVector3(Vector3 vector)
     {
-        sendFloat(vector.x);
-        sendFloat(vector.y);
-        sendFloat(vector.z);
+        writeFloat(vector.x);
+        writeFloat(vector.y);
+        writeFloat(vector.z);
     }
 
-    // Add a Quaternion (4 floats) to the send buffer
-    public void sendQuaternion(Quaternion quaternion)
+    // Add a Quaternion (4 floats) to the write buffer
+    public void writeQuaternion(Quaternion quaternion)
     {
-        sendFloat(quaternion.x);
-        sendFloat(quaternion.y);
-        sendFloat(quaternion.z);
-        sendFloat(quaternion.w);
+        writeFloat(quaternion.x);
+        writeFloat(quaternion.y);
+        writeFloat(quaternion.z);
+        writeFloat(quaternion.w);
     }
 
     // Close the connection and clean up resources
