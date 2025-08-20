@@ -141,7 +141,7 @@ public class MinBiTTcpClient
         }
     }
 
-    // Thread method: listens for incoming data and processes requests
+    // Thread method: listens for incoming data and processes server responses
     private void ListenForData()
     {
         try
@@ -198,7 +198,7 @@ public class MinBiTTcpClient
                     // Determine expected response length for this request header
                     if (!getExpectedResponseLength(requestHeader, out int expectedLength))
                     {
-                        Debug.LogError($"Invalid header {requestHeader}");
+                        Debug.LogError($"No response length found for request header {requestHeader}");
                         clearRequest();
                         flush();
                         break;

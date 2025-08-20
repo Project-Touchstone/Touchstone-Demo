@@ -103,6 +103,8 @@ public class HapticRenderClient : MonoBehaviour
         }
         // Sets read handler
         client.SetReadHandler(ReadHandler);
+        // Sets request timeout
+        client.SetRequestTimeout(500);
         await client.ConnectToServer(serverAddress, serverPort);
     }
 
