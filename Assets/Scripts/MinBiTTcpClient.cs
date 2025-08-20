@@ -29,24 +29,23 @@ public class MinBiTTcpClient
         BULK
     }
 
-    // Request status enum
-    public enum RequestStatus
-    {
-        UNSENT,
-        WAITING,
-        FULFILLED,
-        TIMEDOUT
-    }
-
     // Request object for tracking requests
-    public class Request
+     public class Request
     {
+        public enum Status
+        {
+            UNSENT,
+            WAITING,
+            FULFILLED,
+            TIMEDOUT
+        }
+
         private static long nextId = 1;
         private long id;
         private byte header;
         private byte responseHeader;
         private int responseLength;
-        private RequestStatus status;
+        private Status status;
         private DateTime sentTime;
 
         // Mutex for thread safety
@@ -57,17 +56,17 @@ public class MinBiTTcpClient
             this.header = header;
             this.responseHeader = 0;
             this.responseLength = -1;
-            this.status = RequestStatus.UNSENT;
+            this.status = Status.UNSENT;
             this.id = Interlocked.Increment(ref nextId);
         }
 
         public void Start()
         {
             sentTime = DateTime.UtcNow;
-            SetStatus(RequestStatus.WAITING);
+            SetStatus(Status.WAITING);
         }
 
-        public void SetStatus(RequestStatus newStatus)
+        public void SetStatus(Status newStatus)
         {
             lock (requestLock)
             {
@@ -91,7 +90,7 @@ public class MinBiTTcpClient
             }
         }
 
-        public RequestStatus GetStatus()
+        public Status GetStatus()
         {
             lock (requestLock)
             {
@@ -129,7 +128,7 @@ public class MinBiTTcpClient
         {
             lock (requestLock)
             {
-                return status == RequestStatus.WAITING;
+                return status == Status.WAITING;
             }
         }
 
@@ -139,7 +138,7 @@ public class MinBiTTcpClient
         }
 
         // Asynchronously wait until the request is no longer in WAITING state
-        public async Task<RequestStatus> WaitAsync(int pollIntervalMs = 5)
+        public async Task<Status> WaitAsync(int pollIntervalMs = 5)
         {
             while (IsWaiting())
             {
@@ -286,7 +285,7 @@ public class MinBiTTcpClient
                         if (req.IsWaiting() && (DateTime.UtcNow - req.GetSentTime()).TotalMilliseconds > requestTimeoutMs)
                         {
                             Debug.LogWarning($"Request with header {req.GetHeader()} timed out after {requestTimeoutMs} ms.");
-                            req.SetStatus(RequestStatus.TIMEDOUT);
+                            req.SetStatus(Request.Status.TIMEDOUT);
                             clearRequest();
                             flush();
                             continue;
@@ -346,7 +345,7 @@ public class MinBiTTcpClient
                     request.SetResponseLength(payloadLength);
 
                     // Request has been fufilled
-                    request.SetStatus(RequestStatus.FULFILLED);
+                    request.SetStatus(Request.Status.FULFILLED);
 
                     // Calls read handler if exists
                     if (readHandler != null)
