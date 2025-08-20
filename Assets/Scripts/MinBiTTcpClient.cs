@@ -30,18 +30,25 @@ public class MinBiTTcpClient
     }
 
     // Current endianness (default: BigEndian)
-    Endianness endianness = Endianness.BigEndian;
+    private Endianness endianness = Endianness.BigEndian;
     // Current write mode (default: PACKET)
-    WriteMode writeMode = WriteMode.PACKET;
+    private WriteMode writeMode = WriteMode.PACKET;
 
     // Buffer for outgoing data
-    List<byte> writeBuffer = new List<byte>();
+    private List<byte> writeBuffer = new List<byte>();
 
     // Queue for request headers to track requests
-    Queue<byte> requestQueue = new Queue<byte>();
+    private Queue<byte> requestQueue = new Queue<byte>();
+
+    // Request timeout in milliseconds (default: 500ms)
+    private int requestTimeoutMs = 500;
+
+    // Tracks when each request was sent (DateTime)
+    private Queue<byte> requestTimestamps = new Queue<DateTime>();
+
 
     // Dictionary of expected response length for each request
-    Dictionary<byte, int> responseLengths = new Dictionary<byte, int>();
+    private Dictionary<byte, int> responseLengths = new Dictionary<byte, int>();
 
     // Classes for JSON unpacking
     [Serializable]
@@ -59,17 +66,16 @@ public class MinBiTTcpClient
     }
 
     // Whether a packet is currently being processed
-    bool packetFlag = false;
+    private bool packetFlag = false;
 
     // Buffer for incoming data
-    List<byte> readBuffer = new List<byte>();
+    private List<byte> readBuffer = new List<byte>();
 
     // Handler to process incoming data
-    Action<MinBiTTcpClient, byte, byte, int> readHandler;
+    private Action<MinBiTTcpClient, byte, byte, int> readHandler;
 
     // Mutex for thread safety
     private object dataLock = new object();
-
 
     // Connects to server asynchronously and starts listening thread
     public async Task ConnectToServer(string serverAddress, int serverPort)
@@ -111,6 +117,12 @@ public class MinBiTTcpClient
         this.readHandler = readHandler;
     }
 
+    // Set the request timeout (in milliseconds)
+    public void SetRequestTimeout(int timeoutMs)
+    {
+        requestTimeoutMs = timeoutMs;
+    }
+
     // Loads reponse lengths for each request
     public void LoadResponseLengthsFromJson(string jsonText)
     {
@@ -148,6 +160,23 @@ public class MinBiTTcpClient
                         readBuffer.AddRange(incomingData);
                     }
                 }
+                
+                // Timeout check: remove requests that have timed out
+                lock (dataLock)
+                {
+                    if (requestQueue.Count > 0)
+                    {
+                        byte oldestHeader = requestQueue.Peek();
+                        DateTime sentTime = requestTimestamps.Peek();
+                        if ((DateTime.UtcNow - sentTime).TotalMilliseconds > requestTimeoutMs)
+                        {
+                            Debug.LogWarning($"Request with header {oldestHeader} timed out after {requestTimeoutMs} ms.");
+                            requestQueue.Dequeue();
+                            requestTimestamps.Dequeue();
+                            continue;
+                        }
+                    }
+                }
 
                 // Process packets only when enough data is available
                 while (getReadBufferSize() > 1 && getRequestQueueSize() > 0)
@@ -157,19 +186,17 @@ public class MinBiTTcpClient
                     {
                         packetFlag = true;
                     }
-                    
+
                     // Gets current request header
-                    byte requestHeader = 0;
-                    if (!getRequestHeader(out requestHeader))
+                    if (!getRequestHeader(out byte requestHeader))
                     {
                         Debug.LogError("Request queue cleared unexpectedly");
                         flush();
                         break;
                     }
-                    
+
                     // Determine expected response length for this request header
-                    int expectedLength = 0;
-                    if (!getExpectedResponseLength(requestHeader, out expectedLength))
+                    if (!getExpectedResponseLength(requestHeader, out int expectedLength))
                     {
                         Debug.LogError($"Invalid header {requestHeader}");
                         clearRequest();
@@ -178,9 +205,7 @@ public class MinBiTTcpClient
                     }
 
                     // Gets packet length parameters
-                    int payloadLength = 0;
-                    int totalPacketLength = 1;
-                    if (!getPacketParameters(expectedLength, out payloadLength, out totalPacketLength))
+                    if (!getPacketParameters(expectedLength, out int payloadLength, out int totalPacketLength))
                     {
                         // Waits until able to access all packet parameters
                         break;
@@ -391,6 +416,7 @@ public class MinBiTTcpClient
         lock (dataLock)
         {
             requestQueue.Enqueue(value);
+            requestTimestamps.Enqueue(DateTime.UtcNow);
         }
     }
 
