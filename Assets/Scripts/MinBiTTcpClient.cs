@@ -35,8 +35,7 @@ public class MinBiTTcpClient
         UNSENT,
         WAITING,
         FULFILLED,
-        TIMEDOUT,
-        CLEARED
+        TIMEDOUT
     }
 
     // Request object for tracking requests
@@ -355,14 +354,8 @@ public class MinBiTTcpClient
                         readHandler(this, request);
                     }
 
-                    // Clears request
+                    //Clears request from queue
                     clearRequest();
-
-                    // Request has been cleared
-                    if (request != null)
-                    {
-                        request.SetStatus(RequestStatus.CLEARED);
-                    }
                 }
             }
         }
