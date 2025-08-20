@@ -26,7 +26,7 @@ public class MinBiTTcpClient
     public enum WriteMode
     {
         IMMEDIATE,
-        PACKET
+        BULK
     }
 
     // Request status enum
@@ -83,7 +83,7 @@ public class MinBiTTcpClient
             }
         }
 
-        public void SetResponseLength(byte responseLength)
+        public void SetResponseLength(int responseLength)
         {
             lock (requestLock)
             {
@@ -152,13 +152,13 @@ public class MinBiTTcpClient
     // Current endianness (default: BigEndian)
     private Endianness endianness = Endianness.BigEndian;
     // Current write mode (default: PACKET)
-    private WriteMode writeMode = WriteMode.PACKET;
+    private WriteMode writeMode = WriteMode.BULK;
 
     // Buffer for outgoing data
     private List<byte> writeBuffer = new List<byte>();
 
     // Queue for request objects to track requests
-    private Queue<Request> requestList = new Queue<Request>();
+    private Queue<Request> requestQueue = new Queue<Request>();
 
     // Request timeout in milliseconds (default: 500ms)
     private int requestTimeoutMs = 500;
@@ -188,7 +188,7 @@ public class MinBiTTcpClient
     private List<byte> readBuffer = new List<byte>();
 
     // Handler to process incoming data
-    private Action<MinBiTTcpClient, byte, byte, int> readHandler = null;
+    private Action<MinBiTTcpClient, Request> readHandler = null;
 
     // Mutex for thread safety
     private object dataLock = new object();
@@ -228,7 +228,7 @@ public class MinBiTTcpClient
     }
 
     // Set the handler for processing incoming data
-    public void SetReadHandler(Action<MinBiTTcpClient, byte, byte, int> readHandler)
+    public void SetReadHandler(Action<MinBiTTcpClient, Request> readHandler)
     {
         this.readHandler = readHandler;
     }
@@ -372,7 +372,7 @@ public class MinBiTTcpClient
     }
 
     // Gets response length for request header
-    public bool GetExpectedResponseLength(byte resquestHeader, out int expectedLength)
+    public bool GetExpectedResponseLength(byte requestHeader, out int expectedLength)
     {
         return responseLengths.TryGetValue(requestHeader, out expectedLength);
     }
@@ -510,11 +510,16 @@ public class MinBiTTcpClient
         {
             try
             {
+                // Starts current request
+                if (!GetCurrentRequest(out Request request))
+                {
+                    Debug.LogError($"Failed to write packet: no header present");
+                    return;
+                }
+                request.Start();
+
                 stream.Write(writeBuffer.ToArray(), 0, writeBuffer.Count);
                 writeBuffer.Clear();
-
-                // Starts current request
-                GetCurrentRequest().Start();
             }
             catch (Exception ex)
             {
@@ -526,7 +531,7 @@ public class MinBiTTcpClient
     // Add a single byte to the write buffer
     public void writeByte(byte value)
     {
-        writeBytes([value]);
+        writeBytes(new byte[] { value });
     }
 
     // Add a header byte to the write buffer and queue

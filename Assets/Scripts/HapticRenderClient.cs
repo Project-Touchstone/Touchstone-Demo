@@ -5,6 +5,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEditor.PackageManager.Requests;
+using UnityEditor.Compilation;
 
 public class HapticRenderClient : MonoBehaviour
 {
@@ -94,7 +96,7 @@ public class HapticRenderClient : MonoBehaviour
         client = new MinBiTTcpClient();
         // Sets endianness and send mode
         client.SetEndianness(MinBiTTcpClient.Endianness.BigEndian);
-        client.SetWriteMode(MinBiTTcpClient.WriteMode.PACKET);
+        client.SetWriteMode(MinBiTTcpClient.WriteMode.BULK);
         // Loads reponse lengths from JSON
         TextAsset jsonFile = Resources.Load<TextAsset>("response_lengths");
         if (jsonFile != null)
@@ -128,8 +130,9 @@ public class HapticRenderClient : MonoBehaviour
         }
     }
 
-    private void ReadHandler(MinBiTTcpClient client, byte request, byte response, int length) {
-        switch (request)
+    private void ReadHandler(MinBiTTcpClient client, MinBiTTcpClient.Request request) {
+        byte response = request.GetResponseHeader();
+        switch (request.GetHeader())
         {
             case (byte)Headers.NODE_DATA:
                 {

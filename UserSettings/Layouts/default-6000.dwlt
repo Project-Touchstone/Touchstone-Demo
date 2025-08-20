@@ -339,7 +339,7 @@ MonoBehaviour:
   m_Pos:
     serializedVersion: 2
     x: 0
-    y: 610.6667
+    y: 556
     width: 1301.6666
     height: 362
   m_SerializedDataModeController:
@@ -383,7 +383,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: d2b20000
     m_LastClickedID: 45778
-    m_ExpandedIDs: 00000000daa9000000ca9a3bffffff7f
+    m_ExpandedIDs: 00000000eea90000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -412,7 +412,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: 
     m_LastClickedID: 0
-    m_ExpandedIDs: 00000000daa90000
+    m_ExpandedIDs: 00000000eea90000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -491,8 +491,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "Inspector\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 1302.6667
-    y: 78.66667
+    x: 1303.6666
+    y: 24
     width: 403
     height: 894
   m_SerializedDataModeController:
@@ -541,7 +541,7 @@ MonoBehaviour:
   m_Pos:
     serializedVersion: 2
     x: 0
-    y: 78.66667
+    y: 24
     width: 319.66666
     height: 506
   m_SerializedDataModeController:
@@ -558,8 +558,8 @@ MonoBehaviour:
   m_SceneHierarchy:
     m_TreeViewState:
       scrollPos: {x: 0, y: 0}
-      m_SelectedIDs: 76a80000
-      m_LastClickedID: 43126
+      m_SelectedIDs: 
+      m_LastClickedID: 0
       m_ExpandedIDs: 0afbffff18fbffff6aa8000076a8000082a80000d6a80000f2a8000004a90000
       m_RenameOverlay:
         m_UserAcceptedRename: 0
@@ -606,8 +606,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "Scene\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 320.6667
-    y: 78.66667
+    x: 321.66666
+    y: 24
     width: 980
     height: 506
   m_SerializedDataModeController:
@@ -1130,7 +1130,7 @@ MonoBehaviour:
   m_Rotation:
     m_Target: {x: -0.12548111, y: -0.29988483, z: 0.03979016, w: -0.94493884}
     speed: 2
-    m_Value: {x: -0.1254705, y: -0.2998595, z: 0.039786797, w: -0.94485897}
+    m_Value: {x: -0.12548111, y: -0.29988483, z: 0.039790165, w: -0.94493884}
   m_Size:
     m_Target: 0.12734029
     speed: 2
