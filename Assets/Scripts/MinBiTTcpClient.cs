@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class TcpClientWrapper
+public class MinBiTTcpClient
 {
     // TcpClient for managing the connection
     private TcpClient client;
@@ -40,17 +40,32 @@ public class TcpClientWrapper
     // Queue for request headers to track requests
     Queue<byte> requestQueue = new Queue<byte>();
 
-    // Whether the current request has ended
-    bool endFlag = true;
+    // Dictionary of expected response length for each request
+    Dictionary<byte, int> responseLengths = new Dictionary<byte, int>();
+
+    // Classes for JSON unpacking
+    [Serializable]
+    public class ResponseLengthEntry
+    {
+        public byte header;
+        public int length;
+        // Note length of -1 allows self-declaring variable length response where the byte following the header is assumed to be length declaration
+    }
+
+    [Serializable]
+    public class ResponseLengthList
+    {
+        public List<ResponseLengthEntry> headers;
+    }
+
+    // Whether a packet is currently being processed
+    bool packetFlag = false;
 
     // Buffer for incoming data
     List<byte> readBuffer = new List<byte>();
 
-    // Byte for current response header
-    byte responseHeader;
-
     // Handler to process incoming data
-    Action<TcpClientWrapper, byte> readHandler;
+    Action<MinBiTTcpClient, byte, byte, int> readHandler;
 
     // Mutex for thread safety
     private object dataLock = new object();
@@ -91,9 +106,27 @@ public class TcpClientWrapper
     }
 
     // Set the handler for processing incoming data
-    public void SetReadHandler(Action<TcpClientWrapper, byte> readHandler)
+    public void SetReadHandler(Action<MinBiTTcpClient, byte, byte, int> readHandler)
     {
         this.readHandler = readHandler;
+    }
+
+    // Loads reponse lengths for each request
+    public void LoadResponseLengthsFromJson(string jsonText)
+    {
+        // Uses dictionary entry classes to import from JSON
+        ResponseLengthList list = JsonUtility.FromJson<ResponseLengthList>(jsonText);
+        if (list != null && list.headers != null)
+        {
+            foreach (var entry in list.headers)
+            {
+                responseLengths[entry.header] = entry.length;
+            }
+        }
+        else
+        {
+            Debug.LogError("Failed to parse response lengths JSON.");
+        }
     }
 
     // Thread method: listens for incoming data and processes requests
@@ -114,13 +147,64 @@ public class TcpClientWrapper
                     {
                         readBuffer.AddRange(incomingData);
                     }
-                    // If a request is pending, process it using the handler
-                    while (endFlag && getReadBufferSize() > 0 && getRequestQueueSize() > 0)
+                }
+
+                // Process packets only when enough data is available
+                while (getReadBufferSize() > 1 && getRequestQueueSize() > 0)
+                {
+                    // Packet is being processed
+                    if (!packetFlag)
                     {
-                        endFlag = false;
-                        responseHeader = readByte();
-                        readHandler(this, requestQueue.Peek());
+                        packetFlag = true;
                     }
+                    
+                    // Gets current request header
+                    byte requestHeader = 0;
+                    if (!getRequestHeader(out requestHeader))
+                    {
+                        Debug.LogError("Request queue cleared unexpectedly");
+                        flush();
+                        break;
+                    }
+                    
+                    // Determine expected response length for this request header
+                    int expectedLength = 0;
+                    if (!getExpectedResponseLength(requestHeader, out expectedLength))
+                    {
+                        Debug.LogError($"Invalid header {requestHeader}");
+                        clearRequest();
+                        flush();
+                        break;
+                    }
+
+                    // Gets packet length parameters
+                    int payloadLength = 0;
+                    int totalPacketLength = 1;
+                    if (!getPacketParameters(expectedLength, out payloadLength, out totalPacketLength))
+                    {
+                        // Waits until able to access all packet parameters
+                        break;
+                    }
+
+                    // Wait until the full packet is available
+                    if (getReadBufferSize() < totalPacketLength)
+                    {
+                        break;
+                    }
+
+                    // Now we have the full packet, so process it
+                    byte responseHeader = readByte(); // Gets response header
+
+                    // If variable length, remove the length byte as well
+                    if (expectedLength == -1)
+                    {
+                        readByte();
+                    }
+
+                    readHandler(this, requestHeader, responseHeader, payloadLength);
+
+                    // Clears request
+                    clearRequest();
                 }
             }
         }
@@ -128,6 +212,59 @@ public class TcpClientWrapper
         {
             Debug.Log("Socket exception: " + socketException);
         }
+    }
+
+    // Whether a request is currently being processed
+    public bool isRequestPending()
+    {
+        lock (dataLock)
+        {
+            return requestQueue.Count > 0;
+        }
+    }
+
+    // Whether a packet is currently being processed
+    public bool isPacketPending()
+    {
+        return packetFlag;
+    }
+
+    // Gets response length for request header
+    public bool getExpectedResponseLength(byte resquestHeader, out int expectedLength)
+    {
+        return responseLengths.TryGetValue(requestHeader, out expectedLength);
+    }
+
+    // Gets packet length parameters
+    public bool getPacketParameters(int expectedLength, out int payloadLength, out int totalPacketLength)
+    {
+        payloadLength = 0;
+        totalPacketLength = 1; // 1 byte for response header
+
+        if (expectedLength == -1)
+        {
+            // Need at least 2 bytes: header + length byte
+            if (getReadBufferSize() < 2)
+            {
+                return false;
+            }
+            byte lengthByte;
+            lock (dataLock)
+            {
+                lengthByte = readBuffer[1];
+            }
+            // Sets expected payload length
+            payloadLength = lengthByte;
+            // Adds to total packet length
+            totalPacketLength += 1 + payloadLength; // header + length byte + payload
+        }
+        else
+        {
+            // Updates expected payload length
+            payloadLength = expectedLength;
+            totalPacketLength += expectedLength;
+        }
+        return true;
     }
 
     // Returns the size of the read buffer
@@ -139,18 +276,22 @@ public class TcpClientWrapper
         }
     }
 
-    // Await until the specified number of bytes are available in the read buffer
-    public async Task AwaitBytes(int bytes)
+    // Returns current request header
+    public bool getRequestHeader(out byte requestHeader)
     {
-        while (getReadBufferSize() < bytes)
+        requestHeader = 0;
+        lock (dataLock)
         {
-            await Task.Yield();
+            if (requestQueue.Count > 0)
+            {
+                requestHeader = requestQueue.Peek();
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
-    }
-
-    public byte getResponseHeader()
-    {
-        return responseHeader;
     }
 
     // Read a single byte from the buffer
@@ -211,15 +352,6 @@ public class TcpClientWrapper
         return quaternion;
     }
 
-    // Clear the read buffer
-    public void flush()
-    {
-        lock (dataLock)
-        {
-            readBuffer.Clear();
-        }
-    }
-
     // Returns the size of the write buffer
     public int getWriteBufferSize()
     {
@@ -245,21 +377,11 @@ public class TcpClientWrapper
             }
         }
     }
-
-    // Clear the current request from the queue and mark as ended
-    public void clearPacket()
-    {
-        lock (dataLock)
-        {
-            requestQueue.Dequeue();
-            endFlag = true;
-        }
-    }
     
     // Add a single byte to the write buffer
     public void writeByte(byte value)
     {
-        writeBytes(new byte[] { value });
+        writeBytes([value]);
     }
 
     // Add a header byte to the write buffer and queue
@@ -316,6 +438,33 @@ public class TcpClientWrapper
         writeFloat(quaternion.y);
         writeFloat(quaternion.z);
         writeFloat(quaternion.w);
+    }
+
+    // Clear the current request from the queue and mark as ended
+    public bool clearRequest()
+    {
+        lock (dataLock)
+        {
+            packetFlag = false;
+            if (requestQueue.Count > 0)
+            {
+                requestQueue.Dequeue();
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+    }
+
+    // Clear the read buffer
+    public void flush()
+    {
+        lock (dataLock)
+        {
+            readBuffer.Clear();
+        }
     }
 
     // Close the connection and clean up resources

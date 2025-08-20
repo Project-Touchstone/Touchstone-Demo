@@ -46,19 +46,23 @@ public class HapticRenderClient : MonoBehaviour
     // Movement speed in debug mode
     public float debugMovementSpeed = 0.1f;
 
-    private TcpClientWrapper client;
+    private MinBiTTcpClient client;
 
     // Mutex
     private object commLock = new object();
 
     public enum Headers
     {
+        // Headers from client to server
+
         // NODE_DATA: 0 bytes, 28 byte response (3 float cartesian position, 4 float quaternion orientation (i, j, k, w))
         NODE_DATA = 0x1,
         // FORCE_FEEDBACK: 12 bytes (3 float force), 0 byte response
         FORCE_FEEDBACK = 0x2,
         // COLLISION_FEEDBACK: 28 bytes (3 float point, 3 float normal, 1 float time to collision seconds), 0 byte response
         COLLISION_FEEDBACK = 0x3,
+
+        // Headers from server to client
 
         // ACK: Followed by response data
         ACK = 0x1,
@@ -87,10 +91,16 @@ public class HapticRenderClient : MonoBehaviour
         prevGravity = gravity;
 
         //Handles client setup
-        client = new TcpClientWrapper();
+        client = new MinBiTTcpClient();
         // Sets endianness and send mode
-        client.SetEndianness(TcpClientWrapper.Endianness.BigEndian);
-        client.SetWriteMode(TcpClientWrapper.WriteMode.PACKET);
+        client.SetEndianness(MinBiTTcpClient.Endianness.BigEndian);
+        client.SetWriteMode(MinBiTTcpClient.WriteMode.PACKET);
+        // Loads reponse lengths from JSON
+        TextAsset jsonFile = Resources.Load<TextAsset>("response_lengths");
+        if (jsonFile != null)
+        {
+            client.LoadResponseLengthsFromJson(jsonFile.text);
+        }
         // Sets read handler
         client.SetReadHandler(ReadHandler);
         await client.ConnectToServer(serverAddress, serverPort);
@@ -116,50 +126,42 @@ public class HapticRenderClient : MonoBehaviour
         }
     }
 
-    private void ReadHandler(TcpClientWrapper client, byte request) {
+    private void ReadHandler(MinBiTTcpClient client, byte request, byte response, int length) {
         switch (request)
         {
             case (byte)Headers.NODE_DATA:
                 {
-                    if (client.getResponseHeader() == (byte)Headers.ACK)
+                    if (response == (byte)Headers.ACK)
                     {
-                        if (client.getReadBufferSize() >= 28)
-                        {
-                            // Read the position, velocity, and orientation data from the server
-                            Vector3 position = client.readVector3();
-                            Quaternion orientation = client.readQuaternion();
-                            // Update the node object's position and orientation with converted data
-                            node.SetMirrorPos(hardwareToUnityPos(position));
-                            node.SetMirrorRot(hardwareToUnityRot(orientation));
-                            //Debug.Log($"Received position: {position}, orientation: {orientation}");
-                            // Clear the packet
-                            client.clearPacket();
-                        }
+                        // Read the position, velocity, and orientation data from the server
+                        Vector3 position = client.readVector3();
+                        Quaternion orientation = client.readQuaternion();
+                        // Update the node object's position and orientation with converted data
+                        node.SetMirrorPos(hardwareToUnityPos(position));
+                        node.SetMirrorRot(hardwareToUnityRot(orientation));
+                        //Debug.Log($"Received position: {position}, orientation: {orientation}");
                     }
                     else
                     {
                         // If the response is not an ACK, log an error
                         Debug.LogError("Node data not acknowledged by server");
-                        client.clearPacket();
                     }
                     break;
                 }
             case (byte)Headers.FORCE_FEEDBACK:
                 {
-                    if (client.getResponseHeader() != (byte)Headers.ACK)
+                    if (response != (byte)Headers.ACK)
                     {
                         Debug.LogError("Force feedback not acknowledged by server");
                     }
-                    client.clearPacket();
                     break;
                 }
             case (byte)Headers.COLLISION_FEEDBACK:
                 {
-                    if (client.getResponseHeader() != (byte)Headers.ACK)
+                    if (response != (byte)Headers.ACK)
                     {
                         Debug.LogError("Collision feedback not acknowledged by server");
                     }
-                    client.clearPacket();
                     break;
                 }
         }
