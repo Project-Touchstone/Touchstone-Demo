@@ -57,8 +57,8 @@ public class HapticRenderClient : MonoBehaviour
     {
         // Headers from client to server
 
-        // NODE_DATA: 0 bytes, 28 byte response (3 float cartesian position, 4 float quaternion orientation (i, j, k, w))
-        NODE_DATA = 0x1,
+        // SEND_NODE_DATA: 0 bytes, 28 byte response (3 float cartesian position, 4 float quaternion orientation (i, j, k, w))
+        SEND_NODE_DATA = 0x1,
         // FORCE_FEEDBACK: 12 bytes (3 float force), 0 byte response
         FORCE_FEEDBACK = 0x2,
         // COLLISION_FEEDBACK: 28 bytes (3 float point, 3 float normal, 1 float time to collision seconds), 0 byte response
@@ -124,7 +124,7 @@ public class HapticRenderClient : MonoBehaviour
                     client.writeVector3(unityToHardwareForce(node.GetForceOnMirror()));
                 }
                 // Send a request to the server for node data
-                client.writeHeader((byte)Headers.NODE_DATA);
+                client.writeHeader((byte)Headers.SEND_NODE_DATA);
                 client.writePacket();
             }
         }
@@ -134,7 +134,7 @@ public class HapticRenderClient : MonoBehaviour
         byte response = request.GetResponseHeader();
         switch (request.GetHeader())
         {
-            case (byte)Headers.NODE_DATA:
+            case (byte)Headers.SEND_NODE_DATA:
                 {
                     if (response == (byte)Headers.ACK)
                     {
