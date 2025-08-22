@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.VisualScripting;
 
 public class MinBiTTcpClient
 {
@@ -245,6 +246,9 @@ public class MinBiTTcpClient
         ResponseLengthList list = JsonUtility.FromJson<ResponseLengthList>(jsonText);
         if (list != null && list.headers != null)
         {
+            // Clears responseLengths list
+            responseLengths.Clear();
+            // Adds new entries
             foreach (var entry in list.headers)
             {
                 responseLengths[entry.header] = entry.length;
@@ -288,7 +292,6 @@ public class MinBiTTcpClient
                             req.SetStatus(Request.Status.TIMEDOUT);
                             clearRequest();
                             flush();
-                            continue;
                         }
                     }
                 }
@@ -307,6 +310,12 @@ public class MinBiTTcpClient
                     {
                         Debug.LogError("Request queue cleared unexpectedly");
                         flush();
+                        break;
+                    }
+
+                    // Can't process new request until old ones have been cleared
+                    if (!request.IsWaiting())
+                    {
                         break;
                     }
 
@@ -351,10 +360,9 @@ public class MinBiTTcpClient
                     if (readHandler != null)
                     {
                         readHandler(this, request);
+                        //Clears request from queue
+                        clearRequest();
                     }
-
-                    //Clears request from queue
-                    clearRequest();
                 }
             }
         }
