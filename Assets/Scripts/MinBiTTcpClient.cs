@@ -286,7 +286,7 @@ public class MinBiTTcpClient
                     if (requestQueue.Count > 0)
                     {
                         var req = requestQueue.Peek();
-                        if (req.IsWaiting() && (DateTime.UtcNow - req.GetSentTime()).TotalMilliseconds > requestTimeoutMs)
+                        if ((DateTime.UtcNow - req.GetSentTime()).TotalMilliseconds > requestTimeoutMs)
                         {
                             Debug.LogWarning($"Request with header {req.GetHeader()} timed out after {requestTimeoutMs} ms.");
                             req.SetStatus(Request.Status.TIMEDOUT);
