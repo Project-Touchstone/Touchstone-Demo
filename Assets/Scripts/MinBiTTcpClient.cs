@@ -311,7 +311,7 @@ public class MinBiTTcpClient
                 }
 
                 // Process packets only when enough data is available
-                while (getReadBufferSize() > 1 && getRequestQueueSize() > 0)
+                while (getReadBufferSize() > 0 && getRequestQueueSize() > 0)
                 {
                     // Packet is being processed
                     if (!packetFlag)
@@ -377,6 +377,11 @@ public class MinBiTTcpClient
                         //Clears request from queue
                         clearRequest();
                     }
+                }
+                // Flushes data not associated with request
+                if (getReadBufferSize() > 0)
+                {
+                    flush();
                 }
             }
         }
