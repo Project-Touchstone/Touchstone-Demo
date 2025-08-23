@@ -131,6 +131,10 @@ public class HapticRenderClient : MonoBehaviour
     }
 
     private void ReadHandler(MinBiTTcpClient client, MinBiTTcpClient.Request request) {
+        if (request.IsTimedOut())
+        {
+            return;
+        }
         byte response = request.GetResponseHeader();
         switch (request.GetHeader())
         {

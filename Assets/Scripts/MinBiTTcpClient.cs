@@ -133,6 +133,14 @@ public class MinBiTTcpClient
             }
         }
 
+        public bool IsTimedOut()
+        {
+            lock (requestLock)
+            {
+                return status == Status.TIMEDOUT;
+            }
+        }
+
         public DateTime GetSentTime()
         {
             return sentTime;
@@ -292,6 +300,12 @@ public class MinBiTTcpClient
                             req.SetStatus(Request.Status.TIMEDOUT);
                             clearRequest();
                             flush();
+
+                            // Calls read handler
+                            if (readHandler != null)
+                            {
+                                readHandler(this, req);
+                            }
                         }
                     }
                 }
