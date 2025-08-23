@@ -281,6 +281,82 @@ public class MinBiTTcpClient
         }
     }
 
+    private void checkForTimeouts()
+    {
+        lock (dataLock)
+        {
+            if (requestQueue.Count > 0)
+            {
+                var req = requestQueue.Peek();
+                if ((DateTime.UtcNow - req.GetSentTime()).TotalMilliseconds > requestTimeoutMs)
+                {
+                    Debug.LogWarning($"Request with header {req.GetHeader()} timed out after {requestTimeoutMs} ms.");
+                    req.SetStatus(Request.Status.TIMEDOUT);
+                    clearRequest();
+                    flush();
+
+                    // Calls read handler
+                    if (readHandler != null)
+                    {
+                        readHandler(this, req);
+                    }
+                }
+            }
+        }
+    }
+
+    private bool characterizePacket(out Request request, out bool variableLength, out int payloadLength)
+    {
+        //Assigns default values
+        variableLength = false;
+        payloadLength = 0;
+
+        // Gets current request
+        if (!GetCurrentRequest(out request))
+        {
+            Debug.LogError("Request queue cleared unexpectedly");
+            flush();
+            return false;
+        }
+
+        // Can't process new request until old ones have been cleared
+        if (!request.IsWaiting())
+        {
+            return false;
+        }
+
+        // Packet is being processed
+        if (!packetFlag)
+        {
+            request.SetResponseHeader(peekByte());
+            packetFlag = true;
+        }
+
+        // Determine expected response length for this request
+        if (!GetExpectedResponseLength(request, out int expectedLength))
+        {
+            Debug.LogError($"No response length found for request header {request.GetHeader()}");
+            clearRequest();
+            flush();
+            return false;
+        }
+
+        // Gets packet length parameters
+        if (!getPacketParameters(expectedLength, out payloadLength, out int totalPacketLength))
+        {
+            // Waits until able to access all packet parameters
+            return false;
+        }
+
+        // Wait until the full packet is available
+        if (getReadBufferSize() < totalPacketLength)
+        {
+            return false;
+        }
+        variableLength = (expectedLength == -1);
+        return true;
+    }
+
     // Thread method: listens for incoming data and processes server responses
     private void ListenForData()
     {
@@ -301,72 +377,10 @@ public class MinBiTTcpClient
                     }
                 }
 
-                // Timeout check: remove requests that have timed out
-                lock (dataLock)
-                {
-                    if (requestQueue.Count > 0)
-                    {
-                        var req = requestQueue.Peek();
-                        if ((DateTime.UtcNow - req.GetSentTime()).TotalMilliseconds > requestTimeoutMs)
-                        {
-                            Debug.LogWarning($"Request with header {req.GetHeader()} timed out after {requestTimeoutMs} ms.");
-                            req.SetStatus(Request.Status.TIMEDOUT);
-                            clearRequest();
-                            flush();
-
-                            // Calls read handler
-                            if (readHandler != null)
-                            {
-                                readHandler(this, req);
-                            }
-                        }
-                    }
-                }
-
                 // Process packets only when enough data is available
                 while (getReadBufferSize() > 0 && getRequestQueueSize() > 0)
                 {
-                    // Packet is being processed
-                    if (!packetFlag)
-                    {
-                        packetFlag = true;
-                    }
-
-                    // Gets current request
-                    if (!GetCurrentRequest(out Request request))
-                    {
-                        Debug.LogError("Request queue cleared unexpectedly");
-                        flush();
-                        break;
-                    }
-
-                    // Can't process new request until old ones have been cleared
-                    if (!request.IsWaiting())
-                    {
-                        break;
-                    }
-
-                    // Gets response header
-                    request.SetResponseHeader(readPeek());
-
-                    // Determine expected response length for this request header
-                    if (!GetExpectedResponseLength(request.GetHeader(), request.GetResponseHeader(), out int expectedLength))
-                    {
-                        Debug.LogError($"No response length found for request header {request.GetHeader()}");
-                        clearRequest();
-                        flush();
-                        break;
-                    }
-
-                    // Gets packet length parameters
-                    if (!getPacketParameters(expectedLength, out int payloadLength, out int totalPacketLength))
-                    {
-                        // Waits until able to access all packet parameters
-                        break;
-                    }
-
-                    // Wait until the full packet is available
-                    if (getReadBufferSize() < totalPacketLength)
+                    if (!characterizePacket(out Request request, out bool variableLength, out int payloadLength))
                     {
                         break;
                     }
@@ -375,7 +389,7 @@ public class MinBiTTcpClient
                     readByte(); // Removes response header
 
                     // If variable length, remove the length byte as well
-                    if (expectedLength == -1)
+                    if (variableLength)
                     {
                         readByte();
                     }
@@ -395,10 +409,13 @@ public class MinBiTTcpClient
                     }
                 }
                 // Flushes data not associated with request
-                if (getReadBufferSize() > 0)
+                if (getReadBufferSize() > 0 && getRequestQueueSize() == 0)
                 {
                     flush();
                 }
+
+                // Timeout check: remove requests that have timed out
+                checkForTimeouts();
             }
         }
         catch (SocketException socketException)
@@ -414,15 +431,15 @@ public class MinBiTTcpClient
     }
 
     // Gets response length for request header
-    public bool GetExpectedResponseLength(byte requestHeader, byte responseHeader, out int expectedLength)
+    public bool GetExpectedResponseLength(Request request, out int expectedLength)
     {
         // Lengths by response have priority
-        if (lengthsByResponse.TryGetValue(responseHeader, out expectedLength))
+        if (lengthsByResponse.TryGetValue(request.GetResponseHeader(), out expectedLength))
         {
             return true;
         }
         // Tries lengths by request
-        if (lengthsByRequest.TryGetValue(requestHeader, out expectedLength))
+        if (lengthsByRequest.TryGetValue(request.GetHeader(), out expectedLength))
         {
             return true;
         }
@@ -497,7 +514,7 @@ public class MinBiTTcpClient
         return buffer[0];
     }
 
-    public byte readPeek()
+    public byte peekByte()
     {
         lock (dataLock)
         {
