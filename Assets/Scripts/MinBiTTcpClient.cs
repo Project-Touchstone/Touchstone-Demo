@@ -171,8 +171,10 @@ public class MinBiTTcpClient
     // Request timeout in milliseconds (default: 500ms)
     private int requestTimeoutMs = 500;
 
-    // Dictionary of expected response length for each request
-    private Dictionary<byte, int> responseLengths = new Dictionary<byte, int>();
+    // Dictionary of expected response length by request header
+    private Dictionary<byte, int> lengthsByRequest = new Dictionary<byte, int>();
+    // Dictionary of expected response length by response header
+    private Dictionary<byte, int> lengthsByResponse = new Dictionary<byte, int>();
 
     // Classes for JSON unpacking
     [Serializable]
@@ -186,7 +188,8 @@ public class MinBiTTcpClient
     [Serializable]
     public class ResponseLengthList
     {
-        public List<ResponseLengthEntry> headers;
+        public List<ResponseLengthEntry> requests;
+        public List<ResponseLengthEntry> responses;
     }
 
     // Whether a packet is currently being processed
@@ -252,19 +255,29 @@ public class MinBiTTcpClient
     {
         // Uses dictionary entry classes to import from JSON
         ResponseLengthList list = JsonUtility.FromJson<ResponseLengthList>(jsonText);
-        if (list != null && list.headers != null)
-        {
-            // Clears responseLengths list
-            responseLengths.Clear();
-            // Adds new entries
-            foreach (var entry in list.headers)
-            {
-                responseLengths[entry.header] = entry.length;
-            }
-        }
-        else
+        if (list == null)
         {
             Debug.LogError("Failed to parse response lengths JSON.");
+            return;
+        }
+        if (list.requests != null) {
+            // Clears by request list
+            lengthsByRequest.Clear();
+            // Adds new entries
+            foreach (var entry in list.requests)
+            {
+                lengthsByRequest[entry.header] = entry.length;
+            }
+        }
+        if (list.responses != null)
+        {
+            // Clears by response list
+            lengthsByResponse.Clear();
+            // Adds new entries
+            foreach (var entry in list.responses)
+            {
+                lengthsByResponse[entry.header] = entry.length;
+            }
         }
     }
 
@@ -333,8 +346,11 @@ public class MinBiTTcpClient
                         break;
                     }
 
+                    // Gets response header
+                    request.SetResponseHeader(readPeek());
+
                     // Determine expected response length for this request header
-                    if (!GetExpectedResponseLength(request.GetHeader(), out int expectedLength))
+                    if (!GetExpectedResponseLength(request.GetHeader(), request.GetResponseHeader(), out int expectedLength))
                     {
                         Debug.LogError($"No response length found for request header {request.GetHeader()}");
                         clearRequest();
@@ -356,7 +372,7 @@ public class MinBiTTcpClient
                     }
 
                     // Now we have the full packet, so process it
-                    request.SetResponseHeader(readByte()); // Sets response header
+                    readByte(); // Removes response header
 
                     // If variable length, remove the length byte as well
                     if (expectedLength == -1)
@@ -398,9 +414,20 @@ public class MinBiTTcpClient
     }
 
     // Gets response length for request header
-    public bool GetExpectedResponseLength(byte requestHeader, out int expectedLength)
+    public bool GetExpectedResponseLength(byte requestHeader, byte responseHeader, out int expectedLength)
     {
-        return responseLengths.TryGetValue(requestHeader, out expectedLength);
+        // Lengths by response have priority
+        if (lengthsByResponse.TryGetValue(responseHeader, out expectedLength))
+        {
+            return true;
+        }
+        // Tries lengths by request
+        if (lengthsByRequest.TryGetValue(requestHeader, out expectedLength))
+        {
+            return true;
+        }
+        // Otherwise fails
+        return false;
     }
 
     // Gets packet length parameters
@@ -468,6 +495,14 @@ public class MinBiTTcpClient
         byte[] buffer = new byte[1];
         readBytes(buffer);
         return buffer[0];
+    }
+
+    public byte readPeek()
+    {
+        lock (dataLock)
+        {
+            return readBuffer[0];
+        }
     }
 
     // Read a specified number of bytes into the provided buffer

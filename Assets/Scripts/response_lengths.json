@@ -1,7 +1,10 @@
 {
-  "headers": [
+  "requests": [
     { "header": 1, "length": 28 },
     { "header": 2, "length": 0 },
     { "header": 3, "length": 0 }
+  ],
+  "responses": [
+    { "header": 2, "length": 0 }
   ]
 }
