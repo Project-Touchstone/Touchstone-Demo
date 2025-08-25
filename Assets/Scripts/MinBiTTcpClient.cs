@@ -167,6 +167,8 @@ public class MinBiTTcpClient
 
     // Queue for request objects to track requests
     private Queue<Request> requestQueue = new Queue<Request>();
+    // Queue for unsent requests
+    private Queue<Request> unsentRequests = new Queue<Request>();
 
     // Request timeout in milliseconds (default: 500ms)
     private int requestTimeoutMs = 500;
@@ -319,7 +321,7 @@ public class MinBiTTcpClient
             return false;
         }
 
-        // Can't process new request until old ones have been cleared
+        // Only process requests that have not yet been fufilled
         if (!request.IsWaiting())
         {
             return false;
@@ -588,13 +590,24 @@ public class MinBiTTcpClient
         {
             try
             {
-                // Starts current request
-                if (!GetCurrentRequest(out Request request))
+                lock (dataLock)
                 {
-                    Debug.LogError($"Failed to write packet: no header present");
-                    return;
+                    // Starts unsent requests
+                    if (unsentRequests.Count == 0)
+                    {
+                        Debug.LogError($"Failed to write packet: no headers present");
+                        return;
+                    }
+                    for (int i = 0; i < unsentRequests.Count; i++)
+                    {
+                        // Dequeues from unsent requests
+                        Request request = unsentRequests.Dequeue();
+                        // Starts request
+                        request.Start();
+                        // Adds to main request queue
+                        requestQueue.Enqueue(request);
+                    }
                 }
-                request.Start();
 
                 stream.Write(writeBuffer.ToArray(), 0, writeBuffer.Count);
                 writeBuffer.Clear();
@@ -615,12 +628,15 @@ public class MinBiTTcpClient
     // Add a header byte to the write buffer and queue
     public Request writeHeader(byte value)
     {
-        writeByte(value);
         Request request = new Request(value);
         lock (dataLock)
         {
-            requestQueue.Enqueue(request);
+            // Adds to unsent requests
+            unsentRequests.Enqueue(request);
         }
+
+        // Writes header
+        writeByte(value);
 
         return request;
     }
