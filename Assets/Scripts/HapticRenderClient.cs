@@ -119,13 +119,13 @@ public class HapticRenderClient : MonoBehaviour
                 // Send feedback to the server
                 if (forceFeedback)
                 {
-                    client.writeHeader((byte)Headers.FORCE_FEEDBACK);
+                    client.writeRequest((byte)Headers.FORCE_FEEDBACK);
                     // Send the coverted force vector to the server
                     client.writeVector3(unityToHardwareForce(node.GetForceOnMirror()));
                 }
                 // Send a request to the server for node data
-                client.writeHeader((byte)Headers.SEND_NODE_DATA);
-                client.writePacket();
+                client.writeRequest((byte)Headers.SEND_NODE_DATA);
+                client.sendAll();
             }
         }
     }
@@ -182,12 +182,12 @@ public class HapticRenderClient : MonoBehaviour
         {
             lock (commLock)
             {
-                client.writeHeader((byte)Headers.COLLISION_FEEDBACK);
+                client.writeRequest((byte)Headers.COLLISION_FEEDBACK);
                 // Send the contact point, collision normal, and time until collision to the server
                 client.writeVector3(unityToHardwarePos(nodeObject.transform.position + candidate.getCollisionPoint()));
                 client.writeVector3(unityToHardwareForce(candidate.getCollisionNormal()));
                 client.writeFloat(candidate.getTimeUntilCollision());
-                client.writePacket();
+                client.sendAll();
             }
         }
     }
