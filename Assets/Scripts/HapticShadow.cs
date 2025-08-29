@@ -83,7 +83,7 @@ public class HapticShadow : MonoBehaviour
             float timeUntilCollision = contactToSelf.distance / relVel.magnitude;
             
             // Gets object position at collision by projecting along self velocity
-            Vector3 collisionPoint = self.transform.position + selfVel * timeUntilCollision;
+            Vector3 collisionPoint = selfVel * timeUntilCollision;
 
             // Finds global collision normal
             Vector3 collisionNormal = selfToOther.normal;
