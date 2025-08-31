@@ -381,7 +381,13 @@ public class MinBiTTcpClient
         // Determine expected response length for this request
         if (!GetExpectedResponseLength(currRequest, out int expectedLength))
         {
-            Debug.LogError($"No response length found for request header {currRequest.GetHeader()}");
+            if (currRequest.IsOutgoing()) {
+                Debug.LogError($"No response length found for outgoing request header {currRequest.GetHeader()}");
+            }
+            else {
+                Debug.LogError($"No packet length found for incoming request header {currRequest.GetHeader()}");
+            }
+            
             clearRequest();
             flush();
             return false;
