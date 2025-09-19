@@ -35,29 +35,41 @@ public class MinBiTTcpClient
     {
         public enum Status
         {
-            INCOMING,
-            OUTGOING,
+            WAITING,
+            CHARACTERIZED,
             COMPLETE,
             TIMEDOUT
+        }
+
+        public enum Type
+        {
+            INCOMING,
+            OUTGOING
         }
 
         private static long nextId = 1;
         private long id;
         private byte header;
         private byte responseHeader;
+        private int expectedLength;
         private int payloadLength;
+        private int totalPacketLength;
         private Status status;
+        private Type type;
         private DateTime sentTime;
 
         // Mutex for thread safety
         private readonly object requestLock = new object();
 
-        public Request(byte header, Status status)
+        public Request(byte header, Type type)
         {
             this.header = header;
             this.responseHeader = 0;
-            this.payloadLength = -1;
-            this.status = status;
+            this.expectedLength = -1;
+            this.payloadLength = 0;
+            this.totalPacketLength = 0;
+            this.status = Status.WAITING;
+            this.type = type;
             this.id = Interlocked.Increment(ref nextId);
         }
 
@@ -82,11 +94,27 @@ public class MinBiTTcpClient
             }
         }
 
+        public void SetExpectedLength(int expectedLength)
+        {
+            lock (requestLock)
+            {
+                this.expectedLength = expectedLength;
+            }
+        }
+
         public void SetPayloadLength(int responseLength)
         {
             lock (requestLock)
             {
                 this.payloadLength = responseLength;
+            }
+        }
+
+        public void SetTotalPacketLength(int totalPacketLength)
+        {
+            lock (requestLock)
+            {
+                this.totalPacketLength = totalPacketLength;
             }
         }
 
@@ -116,7 +144,15 @@ public class MinBiTTcpClient
             }
         }
 
-        public int GetResponseLength()
+        public int GetExpectedLength()
+        {
+            lock (requestLock)
+            {
+                return expectedLength;
+            }
+        }
+
+        public int GetPayloadLength()
         {
             lock (requestLock)
             {
@@ -124,11 +160,19 @@ public class MinBiTTcpClient
             }
         }
 
+        public int GetTotalPacketLength()
+        {
+            lock (requestLock)
+            {
+                return totalPacketLength;
+            }
+        }
+
         public bool IsIncoming()
         {
             lock (requestLock)
             {
-                return status == Status.INCOMING;
+                return type == Type.INCOMING;
             }
         }
 
@@ -136,13 +180,21 @@ public class MinBiTTcpClient
         {
             lock (requestLock)
             {
-                return status == Status.OUTGOING;
+                return type == Type.OUTGOING;
             }
         }
 
         public bool IsWaiting()
         {
-            return IsIncoming() || IsOutgoing();
+            return status == Status.WAITING || status == Status.CHARACTERIZED;
+        }
+
+        public bool IsCharacterized()
+        {
+            lock (requestLock)
+            {
+                return status == Status.CHARACTERIZED;
+            }
         }
 
         public bool IsComplete()
@@ -191,6 +243,8 @@ public class MinBiTTcpClient
     private Queue<Request> outgoingRequests = new Queue<Request>();
     // Current request
     private Request currRequest;
+    // Current bytes reserved for reading
+    private int reservedBytes = 0;
 
     // Request timeout in milliseconds (default: 500ms)
     private int requestTimeoutMs = 500;
@@ -345,70 +399,104 @@ public class MinBiTTcpClient
         }
     }
 
-    private bool characterizePacket(out bool variableLength, out int payloadLength)
+    private bool characterizePacket()
     {
-        //Assigns default values
-        variableLength = false;
-        payloadLength = 0;
+        // If bytes in buffer are still reserved, wait
+        if (reservedBytes > 0) {
+            return false;
+        }
 
-        // Peeks header
-        byte receivedHeader = peekByte();
+        if (currRequest == null)
+        {
+            //Peeks header
+            byte receivedHeader = peekByte();
 
-        // If request has not been created
-        if (currRequest == null) {
-            // Checks for outgoing request response header
-            if (getNumOutgoingRequests() > 0) {
-                if (outgoingByResponse.TryGetValue(receivedHeader, out int length)) {
-                    // Assigns to current outgoing request
-                    GetOutgoingRequest(out currRequest);
-                    // Sets reponse header
-                    currRequest.SetResponseHeader(receivedHeader);
-                }
-            }
-            else {
-                //Otherwise create new incoming request
+            // Checks for incoming request header
+            if (incomingByRequest.TryGetValue(receivedHeader, out int length))
+            {
                 // Creates new incoming request
-                currRequest = new Request(receivedHeader, Request.Status.INCOMING);
+                currRequest = new Request(receivedHeader, Request.Type.INCOMING);
             }
+            else if (getNumOutgoingRequests() > 0)
+            {
+                // Assigns to current outgoing request
+                GetOutgoingRequest(out currRequest);
+                // Sets reponse header
+                currRequest.SetResponseHeader(receivedHeader);
+            }
+            else
+            {
+                // Unknown header, flush buffer
+                Debug.LogError($"Unknown packet header {receivedHeader}, flushing buffer.");
+
+                clearRequest();
+                flush();
+                return false;
+            }
+
+            // Determine expected response length for this request
+            if (!GetExpectedResponseLength(currRequest, out int expectedLength))
+            {
+                if (currRequest.IsOutgoing())
+                {
+                    Debug.LogError($"No response length found for outgoing request header {currRequest.GetHeader()}");
+                }
+                else
+                {
+                    Debug.LogError($"No packet length found for incoming request header {currRequest.GetHeader()}");
+                }
+
+                clearRequest();
+                flush();
+                return false;
+            }
+            currRequest.SetExpectedLength(expectedLength);
         }
 
         // Only process requests that have not yet been fufilled
-        if (!currRequest.IsWaiting())
+        if (currRequest.IsComplete())
         {
             return false;
         }
 
-        // Determine expected response length for this request
-        if (!GetExpectedResponseLength(currRequest, out int expectedLength))
+        if (!currRequest.IsCharacterized())
         {
-            if (currRequest.IsOutgoing()) {
-                Debug.LogError($"No response length found for outgoing request header {currRequest.GetHeader()}");
+            if (!getPacketParameters(currRequest.GetExpectedLength(), out int payloadLength, out int totalPacketLength))
+            {
+                // Waits until able to access all packet parameters
+                return false;
             }
-            else {
-                Debug.LogError($"No packet length found for incoming request header {currRequest.GetHeader()}");
+            else
+            {
+                // Sets packet lengths
+                currRequest.SetPayloadLength(payloadLength);
+                currRequest.SetTotalPacketLength(totalPacketLength);
+                // Marks request as characterized
+                currRequest.SetStatus(Request.Status.CHARACTERIZED);
             }
-            
-            clearRequest();
-            flush();
-            return false;
         }
 
         // Gets packet length parameters
-        if (!getPacketParameters(expectedLength, out payloadLength, out int totalPacketLength))
-        {
-            // Waits until able to access all packet parameters
-            return false;
-        }
 
         // Wait until the full packet is available
-        if (getReadBufferSize() < totalPacketLength)
+        if (getReadBufferSize() < currRequest.GetTotalPacketLength())
         {
             return false;
         }
 
-        // Set payload length
-        currRequest.SetPayloadLength(payloadLength);
-        variableLength = (expectedLength == -1);
+        // Now we have the full packet, so process it
+        readByte(); // Removes header
+
+        // If variable length, remove the length byte as well
+        if (currRequest.GetExpectedLength() == -1) {
+            readByte();
+        }
+
+        // Request is now complete
+        currRequest.SetStatus(Request.Status.COMPLETE);
+
+        // Adjust reserved bytes
+        reservedBytes += currRequest.GetPayloadLength();
         return true;
     }
 
@@ -435,32 +523,16 @@ public class MinBiTTcpClient
                 // Process packets only when enough data is available
                 while (getReadBufferSize() > 0)
                 {
-                    if (!characterizePacket(out bool variableLength, out int payloadLength))
+                    if (!characterizePacket())
                     {
                         break;
-                    }
-
-                    // Now we have the full packet, so process it
-                    readByte(); // Removes response header
-
-                    // If variable length, remove the length byte as well
-                    if (variableLength)
-                    {
-                        readByte();
                     }
 
                     // Calls read handler if exists
                     if (readHandler != null)
                     {
                         readHandler(this, currRequest);
-                        //Clears request from queue
-                        clearRequest();
                     }
-
-                    // Request has been fufilled
-                    currRequest.SetStatus(Request.Status.COMPLETE);
-
-                    
                 }
 
                 // Timeout check: remove requests that have timed out
@@ -678,7 +750,7 @@ public class MinBiTTcpClient
     // Add a header byte to the write buffer and queue
     public Request writeRequest(byte value)
     {
-        Request request = new Request(value, Request.Status.OUTGOING);
+        Request request = new Request(value, Request.Type.OUTGOING);
         lock (dataLock)
         {
             // Adds to unsent requests
@@ -697,6 +769,14 @@ public class MinBiTTcpClient
         lock (dataLock)
         {
             return outgoingRequests.Count;
+        }
+    }
+
+    public int getReservedBytes()
+    {
+        lock (dataLock)
+        {
+            return reservedBytes;
         }
     }
 
